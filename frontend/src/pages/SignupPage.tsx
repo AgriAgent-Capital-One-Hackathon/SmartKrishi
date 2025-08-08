@@ -102,7 +102,7 @@ export default function SignupPage() {
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ?<Eye className="h-4 w-4" />:<EyeOff className="h-4 w-4" />}
                 </button>
               </div>
               {errors.password && (
@@ -125,7 +125,7 @@ export default function SignupPage() {
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? <Eye className="h-4 w-4" />:<EyeOff className="h-4 w-4" /> }
                 </button>
               </div>
               {errors.confirmPassword && (
@@ -141,7 +141,7 @@ export default function SignupPage() {
               {isSubmitting ? "Creating Account..." : "Create Account"}
             </Button>
 
-            <div className="text-center">
+            <div className="text-center space-y-3">
               <p className="text-sm text-gray-600">
                 Already have an account?{" "}
                 <button
@@ -152,13 +152,22 @@ export default function SignupPage() {
                   Log in
                 </button>
               </p>
-            </div>
-
-            <div className="text-center">
+              
+              <p className="text-sm text-gray-600">
+                Or{" "}
+                <button
+                  type="button"
+                  onClick={() => navigate("/mobile-auth")}
+                  className="text-green-600 hover:text-green-700 font-medium hover:underline"
+                >
+                  Use Mobile Number Instead
+                </button>
+              </p>
+              
               <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="text-sm text-gray-500 hover:text-gray-700 hover:underline"
+                className="text-sm text-gray-500 hover:text-gray-700 hover:underline block"
               >
                 ← Back to Home
               </button>
