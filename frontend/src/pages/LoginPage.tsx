@@ -106,7 +106,7 @@ export default function LoginPage() {
                   onClick={() => navigate("/signup")}
                   className="text-green-600 hover:text-green-700 font-medium hover:underline"
                 >
-                  Sign up here
+                  Sign up
                 </button>
               </p>
               

@@ -173,7 +173,7 @@ const MobileLoginPage: React.FC = () => {
                       phoneForm.setValue('phone_number', value || '');
                     }}
                     defaultCountry="IN"
-                    className="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-lg ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   {phoneForm.formState.errors.phone_number && (
                     <p className="text-red-500 text-sm">
@@ -184,7 +184,7 @@ const MobileLoginPage: React.FC = () => {
 
                 <Button 
                   type="submit" 
-                  className="w-full h-12 text-lg bg-green-600 hover:bg-green-700"
+                  className="w-full bg-green-600 hover:bg-green-700"
                   disabled={isLoading}
                 >
                   {isLoading ? 'Sending OTP...' : 'Send OTP'}
@@ -200,7 +200,7 @@ const MobileLoginPage: React.FC = () => {
                     placeholder="123456"
                     maxLength={6}
                     {...otpForm.register('otp')}
-                    className="text-lg h-12 text-center tracking-widest"
+                    className="text-center tracking-widest"
                   />
                   {otpForm.formState.errors.otp && (
                     <p className="text-red-500 text-sm">
@@ -213,7 +213,7 @@ const MobileLoginPage: React.FC = () => {
                   <Button 
                     type="button"
                     variant="outline"
-                    className="flex-1 h-12"
+                    className="flex-1"
                     onClick={() => {
                       setStep('phone');
                       setError('');
@@ -224,7 +224,7 @@ const MobileLoginPage: React.FC = () => {
                   </Button>
                   <Button 
                     type="submit" 
-                    className="flex-1 h-12 bg-green-600 hover:bg-green-700"
+                    className="flex-1 bg-green-600 hover:bg-green-700"
                     disabled={isLoading}
                   >
                     {isLoading ? 'Verifying...' : 'Sign In'}
@@ -233,29 +233,37 @@ const MobileLoginPage: React.FC = () => {
               </form>
             )}
 
-            <div className="text-center pt-4 space-y-2">
+            <div className="text-center pt-4 space-y-3">
               {step === 'phone' && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/login')}
-                    className="text-green-600 hover:text-green-700 text-sm underline block w-full"
-                  >
-                    Use Email/Password Instead
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/mobile-auth')}
-                    className="text-gray-600 hover:text-gray-700 text-sm underline block w-full"
-                  >
-                    Don't have an account? Sign up
-                  </button>
+                  <p className="text-sm text-gray-600">
+                    Prefer email?{" "}
+                    <button
+                      type="button"
+                      onClick={() => navigate('/login')}
+                      className="text-green-600 hover:text-green-700 font-medium hover:underline"
+                    >
+                      Use Email/Password Instead
+                    </button>
+                  </p>
+                  
+                  <p className="text-sm text-gray-600">
+                    Don't have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => navigate('/mobile-auth')}
+                      className="text-green-600 hover:text-green-700 font-medium hover:underline"
+                    >
+                      Sign up
+                    </button>
+                  </p>
                 </>
               )}
+              
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="text-gray-500 hover:text-gray-700 text-xs underline block w-full"
+                className="text-sm text-gray-500 hover:text-gray-700 hover:underline block"
               >
                 ← Back to Home
               </button>

@@ -149,7 +149,7 @@ export default function SignupPage() {
                   onClick={() => navigate("/login")}
                   className="text-green-600 hover:text-green-700 font-medium hover:underline"
                 >
-                  Log in
+                  Sign in
                 </button>
               </p>
               
