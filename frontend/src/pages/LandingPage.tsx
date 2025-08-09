@@ -2,6 +2,7 @@ import { ArrowRight, Bot, Cloud, Eye, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useNavigate } from "react-router-dom"
+import farmerBackground from "@/assets/farmerbackground.png"
 
 export default function LandingPage() {
   const navigate = useNavigate()
@@ -34,22 +35,28 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="relative min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8">
         <div className="absolute inset-0 z-0">
-          <div className="w-full h-full bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-sm"></div>
+          <img 
+            src={farmerBackground} 
+            alt="Farmer in field using smartphone technology" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/30 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20"></div>
         </div>
         
         <div className="relative z-10 text-center max-w-4xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
-            <span className="text-green-600">SmartKrishi</span> —<br />
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 drop-shadow-lg">
+            <span className="text-green-400">SmartKrishi</span> —<br />
             Your AI-Powered Farming Assistant
           </h1>
           
-          <p className="text-xl sm:text-2xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl sm:text-2xl text-gray-100 mb-8 max-w-2xl mx-auto drop-shadow-md">
             Get personalized crop advice, real-time weather, and market insights to boost your farm's productivity.
           </p>
           
           <Button 
             size="lg" 
-            className="text-lg px-8 py-6 bg-green-600 hover:bg-green-700"
+            className="text-lg px-8 py-6 bg-green-600 hover:bg-green-700 shadow-xl hover:shadow-2xl transition-all duration-300"
             onClick={() => navigate("/mobile-auth")}
           >
             Get Started
