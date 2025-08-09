@@ -10,13 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
-import { auth, setupRecaptcha, sendOTPToPhone } from '@/lib/firebase';
+import { setupRecaptcha, sendOTPToPhone } from '@/lib/firebase';
 import type { ConfirmationResult } from 'firebase/auth';
 
 // Validation schemas
 const phoneSchema = z.object({
   phone_number: z.string().min(10, 'Phone number is required'),
-  username: z.string().min(2, 'Username must be at least 2 characters').optional(),
+  username: z.string().min(2, 'Full name is required and must be at least 2 characters'),
 });
 
 const otpSchema = z.object({
@@ -37,6 +37,14 @@ const MobileAuthPage: React.FC = () => {
   const [error, setError] = useState<string | React.ReactNode>('');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [useFirebase, setUseFirebase] = useState(true); // Toggle for dev/prod mode
+  
+  // OTP input state
+  const [otpValues, setOtpValues] = useState<string[]>(['', '', '', '', '', '']);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  
+  // Resend timer state
+  const [resendTimer, setResendTimer] = useState(0);
+  const [canResend, setCanResend] = useState(true);
 
   const phoneForm = useForm<PhoneFormData>({
     resolver: zodResolver(phoneSchema),
@@ -52,6 +60,97 @@ const MobileAuthPage: React.FC = () => {
       otp: '',
     },
   });
+
+  // Resend timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  // Auto-focus first OTP input when switching to OTP step
+  useEffect(() => {
+    if (step === 'otp') {
+      const timer = setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
+
+  // Start resend timer
+  const startResendTimer = () => {
+    setResendTimer(60);
+    setCanResend(false);
+  };
+
+  // Handle OTP input change
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return; // Only allow digits
+    
+    const newOtpValues = [...otpValues];
+    newOtpValues[index] = value;
+    setOtpValues(newOtpValues);
+    
+    // Update form value
+    const otpString = newOtpValues.join('');
+    otpForm.setValue('otp', otpString);
+    
+    // Auto-focus next input
+    if (value && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  // Handle OTP input key down
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const otpString = otpValues.join('');
+      if (otpString.length === 6) {
+        otpForm.handleSubmit(handleOTPSubmit)();
+      }
+    }
+  };
+
+  // Handle resend OTP
+  const handleResendOTP = async () => {
+    if (!canResend) return;
+    
+    setError('');
+    setLoading(true);
+    
+    try {
+      if (useFirebase) {
+        const recaptchaVerifier = setupRecaptcha('recaptcha-container');
+        const confirmation = await sendOTPToPhone(phoneNumber, recaptchaVerifier);
+        setConfirmationResult(confirmation);
+      }
+      
+      startResendTimer();
+      setOtpValues(['', '', '', '', '', '']);
+      otpForm.setValue('otp', '');
+      otpRefs.current[0]?.focus();
+      
+      setError(useFirebase ? 'OTP sent successfully!' : 'Demo mode: Use OTP 123456');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePhoneSubmit = async (data: PhoneFormData) => {
     setError('');
@@ -110,6 +209,7 @@ const MobileAuthPage: React.FC = () => {
           setPhoneNumber(data.phone_number);
           setIsNewUser(result.is_new_user);
           setStep('otp');
+          startResendTimer(); // Start the 60-second timer
         } catch (firebaseError) {
           console.error('Firebase OTP error:', firebaseError);
           // Fallback to demo mode
@@ -117,6 +217,7 @@ const MobileAuthPage: React.FC = () => {
           setPhoneNumber(data.phone_number);
           setIsNewUser(result.is_new_user);
           setStep('otp');
+          startResendTimer(); // Start the 60-second timer
           setError('Using demo mode. Use OTP: 123456');
         }
       } else {
@@ -124,6 +225,7 @@ const MobileAuthPage: React.FC = () => {
         setPhoneNumber(data.phone_number);
         setIsNewUser(result.is_new_user);
         setStep('otp');
+        startResendTimer(); // Start the 60-second timer
         setError('Demo mode: Use OTP 123456');
       }
     } catch (err) {
@@ -217,162 +319,109 @@ const MobileAuthPage: React.FC = () => {
         {/* Logo and Branding */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-green-600 mb-2">🌱 SmartKrishi</h1>
-          <p className="text-gray-600">AI-powered farming assistant</p>
+          <p className="text-gray-600">
+            {step === 'phone' ? 'AI-powered farming assistant' : 'Verify your identity'}
+          </p>
         </div>
 
-        <Card className="w-full">
+        <Card className="w-full shadow-lg rounded-xl">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl text-gray-900">
               {step === 'phone' ? 'Get Started' : 'Verify OTP'}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-600 mt-2">
               {step === 'phone' 
-                ? 'Enter your mobile number to continue' 
-                : `Enter the OTP sent to ${phoneNumber}`}
+                ? 'Enter your details to continue' 
+                : `Enter the 6-digit code sent to ${phoneNumber}`}
             </CardDescription>
           </CardHeader>
-          
-          <CardContent className="space-y-4">
-            {/* Development Mode Toggle */}
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm text-gray-600">Mode:</span>
-              <button
-                type="button"
-                onClick={() => setUseFirebase(!useFirebase)}
-                className={`px-3 py-1 text-xs rounded ${
-                  useFirebase 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-orange-100 text-orange-700'
-                }`}
-              >
-                {useFirebase ? 'Firebase OTP' : 'Demo Mode'}
-              </button>
+        
+        <CardContent className="space-y-6">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+              {typeof error === 'string' ? (
+                <p className="text-red-600 text-sm">{error}</p>
+              ) : (
+                error
+              )}
             </div>
+          )}
 
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                {typeof error === 'string' ? (
-                  <p className="text-red-600 text-sm">{error}</p>
-                ) : (
-                  error
+          {/* reCAPTCHA Container - Hidden but required for Firebase */}
+          <div id="recaptcha-container" ref={recaptchaRef} style={{ display: 'none' }}></div>
+
+          {step === 'phone' ? (
+            <form onSubmit={phoneForm.handleSubmit(handlePhoneSubmit)} className="space-y-6">
+              {/* Full Name Input */}
+              <div className="space-y-2">
+                <Label htmlFor="username" className="text-sm font-medium text-gray-700">
+                  Full Name
+                </Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Enter your full name"
+                  className="rounded-lg border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  {...phoneForm.register('username')}
+                />
+                {phoneForm.formState.errors.username && (
+                  <p className="text-red-500 text-sm">
+                    {phoneForm.formState.errors.username.message}
+                  </p>
                 )}
               </div>
-            )}
 
-            {/* reCAPTCHA Container - Hidden but required for Firebase */}
-            <div id="recaptcha-container" ref={recaptchaRef}></div>
-
-            {step === 'phone' ? (
-              <form onSubmit={phoneForm.handleSubmit(handlePhoneSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone_number">Mobile Number</Label>
-                  <PhoneInput
-                    placeholder="Enter phone number"
-                    value={phoneNumber}
-                    onChange={(value) => {
-                      setPhoneNumber(value || '');
-                      phoneForm.setValue('phone_number', value || '');
-                    }}
-                    defaultCountry="IN"
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                  {phoneForm.formState.errors.phone_number && (
-                    <p className="text-red-500 text-sm">
-                      {phoneForm.formState.errors.phone_number.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="username">Your Name</Label>
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="Enter your full name"
-                    {...phoneForm.register('username')}
-                  />
-                  {phoneForm.formState.errors.username && (
-                    <p className="text-red-500 text-sm">
-                      {phoneForm.formState.errors.username.message}
-                    </p>
-                  )}
-                </div>
-
-                <Button 
-                  type="submit" 
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Sending OTP...' : 'Send OTP'}
-                </Button>
-                
-                <div className="text-center space-y-3 mt-3">
-                  <p className="text-sm text-gray-600">
-                    Already have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => navigate('/mobile-login')}
-                      className="text-green-600 hover:text-green-700 font-medium hover:underline"
-                    >
-                      Sign in
-                    </button>
+              {/* Mobile Number Input */}
+              <div className="space-y-2">
+                <Label htmlFor="phone_number" className="text-sm font-medium text-gray-700">
+                  Mobile Number
+                </Label>
+                <PhoneInput
+                  placeholder="+91 9876543210"
+                  value={phoneNumber}
+                  onChange={(value) => {
+                    setPhoneNumber(value || '');
+                    phoneForm.setValue('phone_number', value || '');
+                  }}
+                  defaultCountry="IN"
+                />
+                {phoneForm.formState.errors.phone_number && (
+                  <p className="text-red-500 text-sm">
+                    {phoneForm.formState.errors.phone_number.message}
                   </p>
-                  
+                )}
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-colors"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Sending OTP...' : 'Send OTP'}
+              </Button>
+              
+              <div className="text-center space-y-3 mt-6">
+                <p className="text-sm text-gray-600">
+                  Already have an account?{" "}
                   <button
                     type="button"
-                    onClick={() => navigate('/')}
-                    className="text-sm text-gray-500 hover:text-gray-700 hover:underline block"
+                    onClick={() => navigate('/mobile-login')}
+                    className="text-green-600 hover:text-green-700 font-medium hover:underline"
                   >
-                    ← Back to Home
+                    Sign in
                   </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={otpForm.handleSubmit(handleOTPSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="otp">Enter OTP</Label>
-                  <Input
-                    id="otp"
-                    type="text"
-                    placeholder="123456"
-                    maxLength={6}
-                    {...otpForm.register('otp')}
-                    className="text-center tracking-widest"
-                  />
-                  {otpForm.formState.errors.otp && (
-                    <p className="text-red-500 text-sm">
-                      {otpForm.formState.errors.otp.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex gap-3">
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      setStep('phone');
-                      setError('');
-                      otpForm.reset();
-                    }}
-                  >
-                    Back
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Verifying...' : 'Verify OTP'}
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {/* Moved outside the form, only shown on first step */}
-            {step === 'phone' && (
-              <div className="mt-6 border-t border-gray-200 pt-4 text-center">
+                </p>
+                
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="text-sm text-gray-500 hover:text-gray-700 hover:underline block"
+                >
+                  ← Back to Home
+                </button>
+              </div>
+              
+              <div className="border-t border-gray-200 pt-4 text-center">
                 <p className="text-sm text-gray-600">
                   Prefer email?{" "}
                   <button
@@ -383,11 +432,98 @@ const MobileAuthPage: React.FC = () => {
                     Use Email/Password Instead
                   </button>
                 </p>
-                
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </form>
+          ) : (
+            <div className="space-y-6">
+              {/* Back Button and Phone Display */}
+              <div className="flex items-center justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setStep('phone');
+                    setError('');
+                    setOtpValues(['', '', '', '', '', '']);
+                    otpForm.reset();
+                    setResendTimer(0);
+                    setCanResend(true);
+                  }}
+                  className="text-green-600 border-green-600 hover:bg-green-50"
+                >
+                  ← Back
+                </Button>
+                <p className="text-sm text-gray-600">Sent to {phoneNumber}</p>
+              </div>
+
+              {/* OTP Input Boxes */}
+              <div className="space-y-4">
+                <Label className="text-sm font-medium text-gray-700 block text-center">
+                  Enter 6-digit OTP
+                </Label>
+                <div className="flex justify-center space-x-3">
+                  {otpValues.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => {
+                        otpRefs.current[index] = el;
+                      }}
+                      type="text"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                      className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors"
+                      inputMode="numeric"
+                    />
+                  ))}
+                </div>
+                {otpForm.formState.errors.otp && (
+                  <p className="text-red-500 text-sm text-center">
+                    {otpForm.formState.errors.otp.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Verify Button */}
+              <Button 
+                type="button"
+                onClick={() => {
+                  const otpString = otpValues.join('');
+                  if (otpString.length === 6) {
+                    otpForm.setValue('otp', otpString);
+                    otpForm.handleSubmit(handleOTPSubmit)();
+                  } else {
+                    setError('Please enter all 6 digits');
+                  }
+                }}
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-colors"
+                disabled={isLoading || otpValues.join('').length !== 6}
+              >
+                {isLoading ? 'Verifying...' : 'Verify OTP'}
+              </Button>
+
+              {/* Resend OTP */}
+              <div className="text-center">
+                {resendTimer > 0 ? (
+                  <p className="text-sm text-gray-600">
+                    Resend OTP in {resendTimer} seconds
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendOTP}
+                    disabled={!canResend || isLoading}
+                    className="text-sm text-green-600 hover:text-green-700 font-medium hover:underline disabled:text-gray-400 disabled:hover:no-underline"
+                  >
+                    Resend OTP
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       </div>
     </div>
   );

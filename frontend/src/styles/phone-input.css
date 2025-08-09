@@ -34,11 +34,11 @@
 .PhoneInput {
   height: 3rem;
   width: 100%;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
   background-color: #ffffff;
   padding: 0.5rem 0.75rem;
-  font-size: 1.125rem;
+  font-size: 1rem;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 

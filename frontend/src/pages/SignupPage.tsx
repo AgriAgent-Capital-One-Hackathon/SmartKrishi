@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Eye, EyeOff, Sprout } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -81,18 +81,20 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="p-3 bg-green-100 rounded-full">
-              <Sprout className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
-          <CardDescription>
-            Join SmartKrishi to start smart farming
-          </CardDescription>
-        </CardHeader>
+      <div className="w-full max-w-md space-y-6">
+        {/* Logo and Branding */}
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-green-600 mb-2">🌱 SmartKrishi</h1>
+          <p className="text-gray-600">Join smart farming</p>
+        </div>
+
+        <Card className="w-full">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
+            <CardDescription>
+              Join SmartKrishi to start smart farming
+            </CardDescription>
+          </CardHeader>
         
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -221,6 +223,7 @@ export default function SignupPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

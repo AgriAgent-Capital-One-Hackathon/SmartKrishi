@@ -1,4 +1,4 @@
-import { User, LogOut } from "lucide-react"
+import { LogOut } from "lucide-react"
 
 interface HeaderProps {
   userName?: string
