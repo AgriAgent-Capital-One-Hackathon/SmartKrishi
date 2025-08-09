@@ -156,3 +156,5 @@ Thumbs.db
 # Alembic
 alembic/versions/*.py
 !alembic/versions/__init__.py
+
+serviceAccountKey.json
