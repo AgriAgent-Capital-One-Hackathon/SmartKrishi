@@ -189,6 +189,27 @@ const MobileLoginPage: React.FC = () => {
                 >
                   {isLoading ? 'Sending OTP...' : 'Send OTP'}
                 </Button>
+                
+                <div className="text-center space-y-3 mt-3">
+                  <p className="text-sm text-gray-600">
+                    Don't have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => navigate('/mobile-auth')}
+                      className="text-green-600 hover:text-green-700 font-medium hover:underline"
+                    >
+                      Sign up
+                    </button>
+                  </p>
+                  
+                  <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="text-sm text-gray-500 hover:text-gray-700 hover:underline block"
+                  >
+                    ← Back to Home
+                  </button>
+                </div>
               </form>
             ) : (
               <form onSubmit={otpForm.handleSubmit(handleOTPSubmit)} className="space-y-4">
@@ -233,41 +254,21 @@ const MobileLoginPage: React.FC = () => {
               </form>
             )}
 
-            <div className="text-center pt-4 space-y-3">
-              {step === 'phone' && (
-                <>
-                  <p className="text-sm text-gray-600">
-                    Prefer email?{" "}
-                    <button
-                      type="button"
-                      onClick={() => navigate('/login')}
-                      className="text-green-600 hover:text-green-700 font-medium hover:underline"
-                    >
-                      Use Email/Password Instead
-                    </button>
-                  </p>
-                  
-                  <p className="text-sm text-gray-600">
-                    Don't have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => navigate('/mobile-auth')}
-                      className="text-green-600 hover:text-green-700 font-medium hover:underline"
-                    >
-                      Sign up
-                    </button>
-                  </p>
-                </>
-              )}
-              
-              <button
-                type="button"
-                onClick={() => navigate('/')}
-                className="text-sm text-gray-500 hover:text-gray-700 hover:underline block"
-              >
-                ← Back to Home
-              </button>
-            </div>
+            {/* Moved outside the form, only shown on first step */}
+            {step === 'phone' && (
+              <div className="mt-6 border-t border-gray-200 pt-4 text-center">
+                <p className="text-sm text-gray-600">
+                  Prefer email?{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/login')}
+                    className="text-green-600 hover:text-green-700 font-medium hover:underline"
+                  >
+                    Use Email/Password Instead
+                  </button>
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

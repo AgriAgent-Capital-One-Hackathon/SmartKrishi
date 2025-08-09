@@ -8,10 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useNavigate } from "react-router-dom"
+import { useAuthStore } from "@/store/authStore"
+import { authService } from "@/services/auth"
+import axios from "axios"
 
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
+  email: z.email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -25,6 +28,8 @@ export default function SignupPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const login = useAuthStore(state => state.login)
 
   const {
     register,
@@ -35,11 +40,43 @@ export default function SignupPage() {
   })
 
   const onSubmit = async (data: SignupFormData) => {
-    // Simulate API call
-    console.log("Signup data:", data)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    // TODO: Implement actual signup logic
-    navigate("/login")
+    try {
+      setError(null)
+      
+      // Call the auth service for signup
+      const response = await authService.signup({
+        name: data.name,
+        email: data.email,
+        password: data.password
+      })
+      
+      // Get user info after signup
+      const user = await authService.getCurrentUser()
+      
+      // Update the auth store
+      login(response.access_token, user)
+      
+      // Navigate to dashboard
+      navigate('/dashboard')
+    } catch (error) {
+      // Enhanced error handling to properly display backend error messages
+      console.error("Full error object:", error);
+      if (axios.isAxiosError(error)) {
+        // Log full error response for debugging
+        console.log("Error response data:", error.response?.data);
+        
+        // Check different possible locations of error message
+        const errorMessage = 
+          error.response?.data?.detail || 
+          error.response?.data?.message || 
+          (typeof error.response?.data === 'string' ? error.response.data : null) ||
+          'Signup failed';
+        
+        setError(errorMessage);
+      } else {
+        setError(error instanceof Error ? error.message : 'Signup failed');
+      }
+    }
   }
 
   return (
@@ -59,6 +96,12 @@ export default function SignupPage() {
         
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {error && (
+              <div className="text-red-600 text-sm text-center bg-red-50 p-2 rounded">
+                {error}
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
@@ -141,7 +184,7 @@ export default function SignupPage() {
               {isSubmitting ? "Creating Account..." : "Create Account"}
             </Button>
 
-            <div className="text-center space-y-3">
+            <div className="text-center space-y-3 mt-3">
               <p className="text-sm text-gray-600">
                 Already have an account?{" "}
                 <button
@@ -150,17 +193,6 @@ export default function SignupPage() {
                   className="text-green-600 hover:text-green-700 font-medium hover:underline"
                 >
                   Sign in
-                </button>
-              </p>
-              
-              <p className="text-sm text-gray-600">
-                Or{" "}
-                <button
-                  type="button"
-                  onClick={() => navigate("/mobile-auth")}
-                  className="text-green-600 hover:text-green-700 font-medium hover:underline"
-                >
-                  Use Mobile Number Instead
                 </button>
               </p>
               
@@ -173,6 +205,20 @@ export default function SignupPage() {
               </button>
             </div>
           </form>
+          
+          {/* Moved outside the form */}
+          <div className="mt-6 border-t border-gray-200 pt-4 text-center">
+            <p className="text-sm text-gray-600">
+              Or{" "}
+              <button
+                type="button"
+                onClick={() => navigate("/mobile-auth")}
+                className="text-green-600 hover:text-green-700 font-medium hover:underline"
+              >
+                Use Mobile Number Instead
+              </button>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

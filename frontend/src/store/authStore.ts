@@ -12,51 +12,51 @@ interface User {
 }
 
 interface AuthState {
-  user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAuthenticating: boolean;
+  user: User | null;
+  token: string | null;
+  
+  // Actions
   login: (token: string, user: User) => void;
   logout: () => void;
-  setLoading: (loading: boolean) => void;
-  updateUser: (user: User) => void;
+  setLoading: (isLoading: boolean) => void;
+  setAuthenticating: (isAuthenticating: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      user: null,
-      token: null,
       isAuthenticated: false,
       isLoading: false,
+      isAuthenticating: false,
+      user: null,
+      token: null, // Remove the localStorage.getItem() call here
       
       login: (token: string, user: User) => {
         localStorage.setItem('auth_token', token);
-        set({
+        set({ 
+          isAuthenticated: true, 
+          token, 
           user,
-          token,
-          isAuthenticated: true,
-          isLoading: false,
+          isAuthenticating: false // Reset authenticating flag on successful login
         });
       },
       
       logout: () => {
         localStorage.removeItem('auth_token');
-        set({
+        set({ 
+          isAuthenticated: false, 
+          token: null, 
           user: null,
-          token: null,
-          isAuthenticated: false,
-          isLoading: false,
+          isAuthenticating: false // Reset authenticating flag on logout
         });
       },
       
-      setLoading: (loading: boolean) => {
-        set({ isLoading: loading });
-      },
+      setLoading: (isLoading: boolean) => set({ isLoading }),
       
-      updateUser: (user: User) => {
-        set({ user });
-      },
+      setAuthenticating: (isAuthenticating: boolean) => set({ isAuthenticating }),
     }),
     {
       name: 'auth-storage',

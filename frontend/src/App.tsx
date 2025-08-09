@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from "@/components/theme-provider"
+import ProtectedRoute from "@/components/ProtectedRoutes"
 import LandingPage from "@/pages/LandingPage"
-import LoginPage from "@/pages/LoginPage"
+import LoginPage from "@/pages/NewLoginPage"
 import SignupPage from "@/pages/SignupPage"
 import MobileAuthPage from "@/pages/MobileAuthPage"
 import MobileLoginPage from "@/pages/MobileLoginPage"
@@ -17,7 +18,14 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/mobile-auth" element={<MobileAuthPage />} />
           <Route path="/mobile-login" element={<MobileLoginPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </Router>
     </ThemeProvider>

@@ -31,7 +31,7 @@ const MobileAuthPage: React.FC = () => {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [isNewUser, setIsNewUser] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | React.ReactNode>('');
 
   const phoneForm = useForm<PhoneFormData>({
     resolver: zodResolver(phoneSchema),
@@ -68,6 +68,27 @@ const MobileAuthPage: React.FC = () => {
 
       if (!response.ok) {
         throw new Error(result.detail || 'Failed to send OTP');
+      }
+
+      // Check if the phone number is already registered
+      if (!result.is_new_user) {
+        setError(
+          <div className="flex flex-col items-center space-y-2">
+            <p>This phone number is already registered. Please sign in instead.</p>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="mt-2 text-green-600 border-green-600 hover:bg-green-50"
+              onClick={() => navigate('/mobile-login', { 
+                state: { phoneNumber: data.phone_number } 
+              })}
+            >
+              Go to Sign In
+            </Button>
+          </div>
+        );
+        setLoading(false);
+        return;
       }
 
       setPhoneNumber(data.phone_number);
@@ -170,7 +191,11 @@ const MobileAuthPage: React.FC = () => {
           <CardContent className="space-y-4">
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-600 text-sm">{error}</p>
+                {typeof error === 'string' ? (
+                  <p className="text-red-600 text-sm">{error}</p>
+                ) : (
+                  error
+                )}
               </div>
             )}
 
@@ -217,6 +242,27 @@ const MobileAuthPage: React.FC = () => {
                 >
                   {isLoading ? 'Sending OTP...' : 'Send OTP'}
                 </Button>
+                
+                <div className="text-center space-y-3 mt-3">
+                  <p className="text-sm text-gray-600">
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => navigate('/mobile-login')}
+                      className="text-green-600 hover:text-green-700 font-medium hover:underline"
+                    >
+                      Sign in
+                    </button>
+                  </p>
+                  
+                  <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="text-sm text-gray-500 hover:text-gray-700 hover:underline block"
+                  >
+                    ← Back to Home
+                  </button>
+                </div>
               </form>
             ) : (
               <form onSubmit={otpForm.handleSubmit(handleOTPSubmit)} className="space-y-4">
@@ -261,41 +307,22 @@ const MobileAuthPage: React.FC = () => {
               </form>
             )}
 
-            <div className="text-center pt-4 space-y-3">
-              {step === 'phone' && (
-                <>
-                  <p className="text-sm text-gray-600">
-                    Prefer email?{" "}
-                    <button
-                      type="button"
-                      onClick={() => navigate('/signup')}
-                      className="text-green-600 hover:text-green-700 font-medium hover:underline"
-                    >
-                      Use Email/Password Instead
-                    </button>
-                  </p>
-                  
-                  <p className="text-sm text-gray-600">
-                    Already have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => navigate('/mobile-login')}
-                      className="text-green-600 hover:text-green-700 font-medium hover:underline"
-                    >
-                      Sign in
-                    </button>
-                  </p>
-                </>
-              )}
-              
-              <button
-                type="button"
-                onClick={() => navigate('/')}
-                className="text-sm text-gray-500 hover:text-gray-700 hover:underline block"
-              >
-                ← Back to Home
-              </button>
-            </div>
+            {/* Moved outside the form, only shown on first step */}
+            {step === 'phone' && (
+              <div className="mt-6 border-t border-gray-200 pt-4 text-center">
+                <p className="text-sm text-gray-600">
+                  Prefer email?{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/signup')}
+                    className="text-green-600 hover:text-green-700 font-medium hover:underline"
+                  >
+                    Use Email/Password Instead
+                  </button>
+                </p>
+                
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
