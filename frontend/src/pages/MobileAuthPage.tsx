@@ -10,8 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
-import { setupRecaptcha, sendOTPToPhone } from '@/lib/firebase';
-import type { ConfirmationResult, RecaptchaVerifier } from 'firebase/auth';
+import { setupRecaptcha, sendOTPToPhone, getFirebaseIdToken } from '@/lib/firebase';
+import type { ConfirmationResult } from 'firebase/auth';
 
 // Validation schemas
 const phoneSchema = z.object({
@@ -36,7 +36,6 @@ const MobileAuthPage: React.FC = () => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [error, setError] = useState<string | React.ReactNode>('');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
   
   // OTP input state
   const [otpValues, setOtpValues] = useState<string[]>(['', '', '', '', '', '']);
@@ -88,52 +87,26 @@ const MobileAuthPage: React.FC = () => {
     }
   }, [step]);
 
-  // Initialize reCAPTCHA when component mounts
-  useEffect(() => {
-    const initRecaptcha = async () => {
-      try {
-        // Wait a bit for the DOM to be fully ready
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const verifier = await setupRecaptcha('recaptcha-container');
-        setRecaptchaVerifier(verifier);
-        console.log('reCAPTCHA initialized successfully');
-      } catch (error) {
-        console.error('Failed to initialize reCAPTCHA:', error);
-        setError('Failed to initialize reCAPTCHA. Please refresh the page.');
-      }
-    };
-
-    // Only initialize if container exists
-    const container = document.getElementById('recaptcha-container');
-    if (container) {
-      initRecaptcha();
-    } else {
-      // Retry after a short delay if container not found
-      setTimeout(() => {
-        const retryContainer = document.getElementById('recaptcha-container');
-        if (retryContainer) {
-          initRecaptcha();
-        }
-      }, 1000);
-    }
-
-    // Cleanup on component unmount
-    return () => {
-      if (recaptchaVerifier) {
-        try {
-          recaptchaVerifier.clear();
-        } catch (error) {
-          console.error('Error clearing reCAPTCHA:', error);
-        }
-      }
-    };
-  }, []); // Empty dependency array to run only once
-
   // Start resend timer
   const startResendTimer = () => {
     setResendTimer(60);
     setCanResend(false);
+  };
+
+  // Retry reCAPTCHA initialization
+  const retryRecaptchaInit = async () => {
+    setError('');
+    setLoading(true);
+    
+    try {
+      await setupRecaptcha('recaptcha-container', { forceNew: true, size: 'invisible' });
+      setError('reCAPTCHA initialized successfully. You can now try sending OTP again.');
+    } catch (err) {
+      console.error('Retry reCAPTCHA error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to initialize reCAPTCHA. Please refresh the page.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle OTP input change
@@ -177,19 +150,8 @@ const MobileAuthPage: React.FC = () => {
     try {
       console.log('Resending OTP via Firebase...');
       
-      let verifier = recaptchaVerifier;
-      
-      // If no verifier exists or it's been used, create a new one
-      if (!verifier) {
-        // Clear any existing reCAPTCHA
-        const recaptchaContainer = document.getElementById('recaptcha-container');
-        if (recaptchaContainer) {
-          recaptchaContainer.innerHTML = '';
-        }
-        
-        verifier = await setupRecaptcha('recaptcha-container');
-        setRecaptchaVerifier(verifier);
-      }
+      // Create a new reCAPTCHA verifier for resend
+      const verifier = await setupRecaptcha('recaptcha-container', { forceNew: true, size: 'invisible' });
       
       const confirmation = await sendOTPToPhone(phoneNumber, verifier);
       setConfirmationResult(confirmation);
@@ -202,7 +164,7 @@ const MobileAuthPage: React.FC = () => {
       
     } catch (err) {
       console.error('Resend OTP error:', err);
-      setError('Failed to resend OTP. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to resend OTP. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -214,7 +176,7 @@ const MobileAuthPage: React.FC = () => {
 
     try {
       // First check if this is a new user or existing user via our backend
-      const response = await fetch('/api/v1/auth/mobile-init', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/mobile-init`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -256,19 +218,8 @@ const MobileAuthPage: React.FC = () => {
       try {
         console.log('Attempting to send OTP via Firebase...');
         
-        let verifier = recaptchaVerifier;
-        
-        // If no verifier exists or it needs to be refreshed, create a new one
-        if (!verifier) {
-          // Clear any existing reCAPTCHA
-          const recaptchaContainer = document.getElementById('recaptcha-container');
-          if (recaptchaContainer) {
-            recaptchaContainer.innerHTML = '';
-          }
-          
-          verifier = await setupRecaptcha('recaptcha-container');
-          setRecaptchaVerifier(verifier);
-        }
+        // Create a new reCAPTCHA verifier for each OTP send attempt
+        const verifier = await setupRecaptcha('recaptcha-container', { forceNew: true, size: 'invisible' });
         
         // Send OTP via Firebase
         const confirmation = await sendOTPToPhone(data.phone_number, verifier);
@@ -283,7 +234,28 @@ const MobileAuthPage: React.FC = () => {
       } catch (firebaseError) {
         console.error('Firebase OTP error:', firebaseError);
         const errorMessage = firebaseError instanceof Error ? firebaseError.message : String(firebaseError);
-        throw new Error(`Failed to send OTP: ${errorMessage}`);
+        
+        // Show retry button for reCAPTCHA-related errors
+        if (errorMessage.includes('reCAPTCHA') || errorMessage.includes('network-request-failed')) {
+          setError(
+            <div className="flex flex-col items-center space-y-2">
+              <p>{errorMessage}</p>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="mt-2 text-blue-600 border-blue-600 hover:bg-blue-50"
+                onClick={retryRecaptchaInit}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Retrying...' : 'Retry'}
+              </Button>
+            </div>
+          );
+        } else {
+          setError(`Failed to send OTP: ${errorMessage}`);
+        }
+        setLoading(false);
+        return;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -302,20 +274,23 @@ const MobileAuthPage: React.FC = () => {
       // Verify OTP with Firebase first
       if (confirmationResult) {
         try {
+          console.log('Confirming OTP with Firebase...');
           const credential = await confirmationResult.confirm(data.otp);
-          firebaseToken = await credential.user.getIdToken();
+          console.log('OTP confirmed, getting ID token...');
           
-          // Add small delay to ensure token timestamp is valid
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Use the helper function with retry logic
+          firebaseToken = await getFirebaseIdToken(credential.user);
+          console.log('Firebase ID token obtained successfully');
           
         } catch (firebaseError) {
+          console.error('Firebase OTP confirmation error:', firebaseError);
           throw new Error('Invalid OTP. Please try again.');
         }
       } else {
         throw new Error('No OTP confirmation available. Please request a new OTP.');
       }
 
-      let endpoint = '/api/v1/auth/mobile-verify';
+      let endpoint = `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/mobile-verify`;
       let body: any = {
         phone_number: phoneNumber,
         otp: firebaseToken, // Use Firebase token only
@@ -323,7 +298,7 @@ const MobileAuthPage: React.FC = () => {
 
       // If new user, use signup endpoint
       if (isNewUser) {
-        endpoint = '/api/v1/auth/mobile-signup';
+        endpoint = `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/mobile-signup`;
         body = {
           phone_number: phoneNumber,
           username: phoneForm.getValues('username'),
@@ -346,7 +321,7 @@ const MobileAuthPage: React.FC = () => {
       }
 
       // Get user info
-      const userResponse = await fetch('/api/v1/auth/me', {
+      const userResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/me`, {
         headers: {
           'Authorization': `Bearer ${result.access_token}`,
         },
@@ -410,8 +385,8 @@ const MobileAuthPage: React.FC = () => {
             </div>
           )}
 
-          {/* reCAPTCHA Container - Visible for Firebase OTP */}
-          <div id="recaptcha-container" ref={recaptchaRef} className="flex justify-center my-4"></div>
+          {/* reCAPTCHA Container - Hidden but present for invisible reCAPTCHA */}
+          <div id="recaptcha-container" ref={recaptchaRef} className="h-0 overflow-hidden"></div>
 
           {step === 'phone' ? (
             <form onSubmit={phoneForm.handleSubmit(handlePhoneSubmit)} className="space-y-6">

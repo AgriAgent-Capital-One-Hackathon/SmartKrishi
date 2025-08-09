@@ -59,20 +59,36 @@ class FirebaseService:
             return None
             
         try:
-            # Add clock skew tolerance for token verification
-            decoded_token = auth.verify_id_token(id_token, check_revoked=True, clock_skew_seconds=60)
+            print(f"Verifying Firebase ID token (length: {len(id_token)})")
+            # Add more clock skew tolerance for token verification
+            decoded_token = auth.verify_id_token(id_token, check_revoked=True, clock_skew_seconds=300)
+            print(f"Token verified successfully for user: {decoded_token.get('phone_number', decoded_token.get('uid'))}")
             return decoded_token
         except Exception as e:
             print(f"Error verifying ID token: {e}")
-            # If clock skew error, try with more tolerance
-            if "used too early" in str(e) or "clock" in str(e).lower():
+            error_str = str(e).lower()
+            
+            # Handle various timing issues
+            if any(phrase in error_str for phrase in ["used too early", "clock", "issued at", "timestamp"]):
                 try:
                     print("Retrying with increased clock skew tolerance...")
-                    decoded_token = auth.verify_id_token(id_token, check_revoked=True, clock_skew_seconds=120)
+                    decoded_token = auth.verify_id_token(id_token, check_revoked=True, clock_skew_seconds=600)
+                    print(f"Token verified on retry for user: {decoded_token.get('phone_number', decoded_token.get('uid'))}")
                     return decoded_token
                 except Exception as retry_error:
                     print(f"Retry failed: {retry_error}")
                     return None
+            
+            # Handle expired tokens
+            if "expired" in error_str:
+                print("Token is expired. Client should request a new token.")
+                return None
+            
+            # Handle invalid tokens
+            if any(phrase in error_str for phrase in ["invalid", "malformed", "decode"]):
+                print("Token is invalid or malformed.")
+                return None
+                
             return None
     
     def get_user_by_phone(self, phone_number: str) -> Optional[dict]:

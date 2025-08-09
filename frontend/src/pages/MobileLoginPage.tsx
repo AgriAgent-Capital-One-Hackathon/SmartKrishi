@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
 import { setupRecaptcha, sendOTPToPhone } from '@/lib/firebase';
-import type { ConfirmationResult, RecaptchaVerifier } from 'firebase/auth';
+import type { ConfirmationResult } from 'firebase/auth';
 
 // Validation schemas
 const phoneSchema = z.object({
@@ -30,9 +30,8 @@ const MobileLoginPage: React.FC = () => {
   
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | React.ReactNode>('');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
   
   // OTP input state
   const [otpValues, setOtpValues] = useState<string[]>(['', '', '', '', '', '']);
@@ -83,36 +82,26 @@ const MobileLoginPage: React.FC = () => {
     }
   }, [step]);
 
-  // Initialize reCAPTCHA when component mounts
-  useEffect(() => {
-    const initRecaptcha = async () => {
-      try {
-        const verifier = await setupRecaptcha('recaptcha-container');
-        setRecaptchaVerifier(verifier);
-        console.log('reCAPTCHA initialized successfully');
-      } catch (error) {
-        console.error('Failed to initialize reCAPTCHA:', error);
-      }
-    };
-
-    initRecaptcha();
-
-    // Cleanup on component unmount
-    return () => {
-      if (recaptchaVerifier) {
-        try {
-          recaptchaVerifier.clear();
-        } catch (error) {
-          console.error('Error clearing reCAPTCHA:', error);
-        }
-      }
-    };
-  }, []);
-
   // Start resend timer
   const startResendTimer = () => {
     setResendTimer(60);
     setCanResend(false);
+  };
+
+  // Retry reCAPTCHA initialization
+  const retryRecaptchaInit = async () => {
+    setError('');
+    setLoading(true);
+    
+    try {
+      await setupRecaptcha('recaptcha-container', { forceNew: true, size: 'invisible' });
+      setError('reCAPTCHA initialized successfully. You can now try sending OTP again.');
+    } catch (err) {
+      console.error('Retry reCAPTCHA error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to initialize reCAPTCHA. Please refresh the page.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle OTP input change
@@ -156,19 +145,8 @@ const MobileLoginPage: React.FC = () => {
     try {
       console.log('Resending OTP via Firebase...');
       
-      let verifier = recaptchaVerifier;
-      
-      // If no verifier exists or it's been used, create a new one
-      if (!verifier) {
-        // Clear any existing reCAPTCHA
-        const recaptchaContainer = document.getElementById('recaptcha-container');
-        if (recaptchaContainer) {
-          recaptchaContainer.innerHTML = '';
-        }
-        
-        verifier = await setupRecaptcha('recaptcha-container');
-        setRecaptchaVerifier(verifier);
-      }
+      // Create a new reCAPTCHA verifier for resend
+      const verifier = await setupRecaptcha('recaptcha-container', { forceNew: true, size: 'invisible' });
       
       const confirmation = await sendOTPToPhone(phoneNumber, verifier);
       setConfirmationResult(confirmation);
@@ -183,7 +161,7 @@ const MobileLoginPage: React.FC = () => {
       
     } catch (err) {
       console.error('Resend OTP error:', err);
-      setError('Failed to resend OTP. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to resend OTP. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -220,19 +198,8 @@ const MobileLoginPage: React.FC = () => {
       try {
         console.log('Attempting to send OTP via Firebase...');
         
-        let verifier = recaptchaVerifier;
-        
-        // If no verifier exists or it needs to be refreshed, create a new one
-        if (!verifier) {
-          // Clear any existing reCAPTCHA
-          const recaptchaContainer = document.getElementById('recaptcha-container');
-          if (recaptchaContainer) {
-            recaptchaContainer.innerHTML = '';
-          }
-          
-          verifier = await setupRecaptcha('recaptcha-container');
-          setRecaptchaVerifier(verifier);
-        }
+        // Create a new reCAPTCHA verifier for each OTP send attempt
+        const verifier = await setupRecaptcha('recaptcha-container', { forceNew: true, size: 'invisible' });
         
         // Send OTP via Firebase
         const confirmation = await sendOTPToPhone(data.phone_number, verifier);
@@ -246,7 +213,28 @@ const MobileLoginPage: React.FC = () => {
       } catch (firebaseError) {
         console.error('Firebase OTP error:', firebaseError);
         const errorMessage = firebaseError instanceof Error ? firebaseError.message : String(firebaseError);
-        throw new Error(`Failed to send OTP: ${errorMessage}`);
+        
+        // Show retry button for reCAPTCHA-related errors
+        if (errorMessage.includes('reCAPTCHA') || errorMessage.includes('network-request-failed')) {
+          setError(
+            <div className="flex flex-col items-center space-y-2">
+              <p>{errorMessage}</p>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="mt-2 text-blue-600 border-blue-600 hover:bg-blue-50"
+                onClick={retryRecaptchaInit}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Retrying...' : 'Retry'}
+              </Button>
+            </div>
+          );
+        } else {
+          setError(`Failed to send OTP: ${errorMessage}`);
+        }
+        setLoading(false);
+        return;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -350,7 +338,11 @@ const MobileLoginPage: React.FC = () => {
           <CardContent className="space-y-4">
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-600 text-sm">{error}</p>
+                {typeof error === 'string' ? (
+                  <p className="text-red-600 text-sm">{error}</p>
+                ) : (
+                  error
+                )}
               </div>
             )}
 
@@ -511,8 +503,8 @@ const MobileLoginPage: React.FC = () => {
           </CardContent>
         </Card>
         
-        {/* Hidden reCAPTCHA container */}
-        <div id="recaptcha-container" style={{ display: 'none' }}></div>
+        {/* reCAPTCHA Container - Hidden but present for invisible reCAPTCHA */}
+        <div id="recaptcha-container" className="h-0 overflow-hidden"></div>
       </div>
     </div>
   );

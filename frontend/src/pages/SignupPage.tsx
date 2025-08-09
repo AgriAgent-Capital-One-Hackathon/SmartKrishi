@@ -138,7 +138,7 @@ export default function SignupPage() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   {...register("password")}
                   className={errors.password ? "border-red-500 pr-10" : "pr-10"}
                 />
@@ -161,7 +161,7 @@ export default function SignupPage() {
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Confirm your password"
                   {...register("confirmPassword")}
                   className={errors.confirmPassword ? "border-red-500 pr-10" : "pr-10"}
                 />
