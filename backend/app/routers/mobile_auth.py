@@ -1,17 +1,18 @@
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import Dict, Any
 
 from app.db.database import get_db
 from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.models.user import User, AuthProvider
 from app.schemas.user import MobileAuthInit, MobileAuthVerify, Token
+from app.services.firebase_service import firebase_service
 
 
 router = APIRouter()
 
-# For development, we'll use a simple OTP verification
-# In production, integrate with Firebase Admin SDK or SMS service
+# For development only - remove in production
 DEMO_OTP = "123456"
 
 
@@ -76,18 +77,39 @@ async def mobile_auth_verify(
     db: Session = Depends(get_db)
 ):
     """
-    Verify OTP and authenticate user.
+    Verify Firebase ID token and authenticate user.
     For existing users, logs them in. For new users, you need to call mobile-signup.
     """
     try:
-        # Verify OTP
-        if verify_data.otp != DEMO_OTP:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid OTP"
-            )
+        # In production mode, verify Firebase ID token
+        # For development, still allow demo OTP
+        firebase_user = None
         
-        # Check if user exists
+        if verify_data.otp != DEMO_OTP:
+            # Treat OTP as Firebase ID token for production
+            firebase_user = firebase_service.verify_id_token(verify_data.otp)
+            if not firebase_user:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid Firebase token"
+                )
+            
+            # Extract phone number from Firebase user
+            firebase_phone = firebase_user.get('phone_number')
+            if not firebase_phone:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Phone number not found in Firebase token"
+                )
+            
+            # Verify that the phone number matches the request
+            if firebase_phone != verify_data.phone_number:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Phone number mismatch"
+                )
+        
+        # Check if user exists in our database
         user = db.query(User).filter(
             User.phone_number == verify_data.phone_number
         ).first()
@@ -132,26 +154,37 @@ async def mobile_signup(
     db: Session = Depends(get_db)
 ):
     """
-    Complete mobile signup after OTP verification.
-    Expects: {"phone_number": "+91xxxxxxxxxx", "username": "John Doe", "otp": "123456"}
+    Complete mobile signup after Firebase OTP verification.
+    Expects: {"phone_number": "+91xxxxxxxxxx", "username": "John Doe", "firebase_token": "..."}
     """
     try:
         phone_number = signup_data.get("phone_number")
         username = signup_data.get("username")
-        otp = signup_data.get("otp")
+        firebase_token = signup_data.get("firebase_token") or signup_data.get("otp")
         
-        if not all([phone_number, username, otp]):
+        if not all([phone_number, username, firebase_token]):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Phone number, username, and OTP are required"
+                detail="Phone number, username, and Firebase token are required"
             )
         
-        # Verify OTP
-        if otp != DEMO_OTP:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid OTP"
-            )
+        # Verify Firebase token (unless it's demo OTP)
+        firebase_user = None
+        if firebase_token != DEMO_OTP:
+            firebase_user = firebase_service.verify_id_token(firebase_token)
+            if not firebase_user:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid Firebase token"
+                )
+            
+            # Extract phone number from Firebase user
+            firebase_phone = firebase_user.get('phone_number')
+            if firebase_phone != phone_number:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Phone number mismatch with Firebase token"
+                )
         
         # Check if user already exists
         existing_user = db.query(User).filter(

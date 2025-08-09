@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
+import { auth, setupRecaptcha, sendOTPToPhone } from '@/lib/firebase';
+import type { ConfirmationResult } from 'firebase/auth';
 
 // Validation schemas
 const phoneSchema = z.object({
@@ -27,11 +29,14 @@ type OTPFormData = z.infer<typeof otpSchema>;
 const MobileAuthPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, setLoading, isLoading } = useAuthStore();
+  const recaptchaRef = useRef<HTMLDivElement>(null);
   
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [isNewUser, setIsNewUser] = useState(false);
   const [error, setError] = useState<string | React.ReactNode>('');
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [useFirebase, setUseFirebase] = useState(true); // Toggle for dev/prod mode
 
   const phoneForm = useForm<PhoneFormData>({
     resolver: zodResolver(phoneSchema),
@@ -53,6 +58,7 @@ const MobileAuthPage: React.FC = () => {
     setLoading(true);
 
     try {
+      // First check if this is a new user or existing user via our backend
       const response = await fetch('/api/v1/auth/mobile-init', {
         method: 'POST',
         headers: {
@@ -67,7 +73,7 @@ const MobileAuthPage: React.FC = () => {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.detail || 'Failed to send OTP');
+        throw new Error(result.detail || 'Failed to initialize mobile auth');
       }
 
       // Check if the phone number is already registered
@@ -91,9 +97,35 @@ const MobileAuthPage: React.FC = () => {
         return;
       }
 
-      setPhoneNumber(data.phone_number);
-      setIsNewUser(result.is_new_user);
-      setStep('otp');
+      // Send OTP via Firebase
+      if (useFirebase) {
+        try {
+          // Setup reCAPTCHA
+          const recaptchaVerifier = setupRecaptcha('recaptcha-container');
+          
+          // Send OTP via Firebase
+          const confirmation = await sendOTPToPhone(data.phone_number, recaptchaVerifier);
+          setConfirmationResult(confirmation);
+          
+          setPhoneNumber(data.phone_number);
+          setIsNewUser(result.is_new_user);
+          setStep('otp');
+        } catch (firebaseError) {
+          console.error('Firebase OTP error:', firebaseError);
+          // Fallback to demo mode
+          setUseFirebase(false);
+          setPhoneNumber(data.phone_number);
+          setIsNewUser(result.is_new_user);
+          setStep('otp');
+          setError('Using demo mode. Use OTP: 123456');
+        }
+      } else {
+        // Demo mode fallback
+        setPhoneNumber(data.phone_number);
+        setIsNewUser(result.is_new_user);
+        setStep('otp');
+        setError('Demo mode: Use OTP 123456');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -106,10 +138,22 @@ const MobileAuthPage: React.FC = () => {
     setLoading(true);
 
     try {
+      let firebaseToken = null;
+      
+      // If using Firebase, verify OTP with Firebase first
+      if (useFirebase && confirmationResult) {
+        try {
+          const credential = await confirmationResult.confirm(data.otp);
+          firebaseToken = await credential.user.getIdToken();
+        } catch (firebaseError) {
+          throw new Error('Invalid OTP. Please try again.');
+        }
+      }
+
       let endpoint = '/api/v1/auth/mobile-verify';
       let body: any = {
         phone_number: phoneNumber,
-        otp: data.otp,
+        otp: firebaseToken || data.otp, // Use Firebase token or demo OTP
       };
 
       // If new user, use signup endpoint
@@ -118,7 +162,7 @@ const MobileAuthPage: React.FC = () => {
         body = {
           phone_number: phoneNumber,
           username: phoneForm.getValues('username'),
-          otp: data.otp,
+          firebase_token: firebaseToken || data.otp, // Use Firebase token or demo OTP
         };
       }
 
@@ -189,6 +233,22 @@ const MobileAuthPage: React.FC = () => {
           </CardHeader>
           
           <CardContent className="space-y-4">
+            {/* Development Mode Toggle */}
+            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <span className="text-sm text-gray-600">Mode:</span>
+              <button
+                type="button"
+                onClick={() => setUseFirebase(!useFirebase)}
+                className={`px-3 py-1 text-xs rounded ${
+                  useFirebase 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-orange-100 text-orange-700'
+                }`}
+              >
+                {useFirebase ? 'Firebase OTP' : 'Demo Mode'}
+              </button>
+            </div>
+
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md">
                 {typeof error === 'string' ? (
@@ -198,6 +258,9 @@ const MobileAuthPage: React.FC = () => {
                 )}
               </div>
             )}
+
+            {/* reCAPTCHA Container - Hidden but required for Firebase */}
+            <div id="recaptcha-container" ref={recaptchaRef}></div>
 
             {step === 'phone' ? (
               <form onSubmit={phoneForm.handleSubmit(handlePhoneSubmit)} className="space-y-4">
