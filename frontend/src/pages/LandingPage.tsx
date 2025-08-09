@@ -46,7 +46,7 @@ export default function LandingPage() {
         
         <div className="relative z-10 text-center max-w-4xl mx-auto">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 drop-shadow-lg">
-            <span className="text-green-400">SmartKrishi</span> —<br />
+            <span className="text-green-400">SmartKrishi</span> <br />
             Your AI-Powered Farming Assistant
           </h1>
           

@@ -36,7 +36,6 @@ const MobileAuthPage: React.FC = () => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [error, setError] = useState<string | React.ReactNode>('');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [useFirebase, setUseFirebase] = useState(true); // Toggle for dev/prod mode
   
   // OTP input state
   const [otpValues, setOtpValues] = useState<string[]>(['', '', '', '', '', '']);
@@ -133,20 +132,32 @@ const MobileAuthPage: React.FC = () => {
     setLoading(true);
     
     try {
-      if (useFirebase) {
-        const recaptchaVerifier = setupRecaptcha('recaptcha-container');
-        const confirmation = await sendOTPToPhone(phoneNumber, recaptchaVerifier);
-        setConfirmationResult(confirmation);
+      console.log('Resending OTP via Firebase...');
+      
+      // Clear any existing reCAPTCHA
+      const recaptchaContainer = document.getElementById('recaptcha-container');
+      if (recaptchaContainer) {
+        recaptchaContainer.innerHTML = '';
       }
       
+      const recaptchaVerifier = setupRecaptcha('recaptcha-container');
+      
+      if (!recaptchaVerifier) {
+        throw new Error('Failed to setup reCAPTCHA verifier');
+      }
+      
+      const confirmation = await sendOTPToPhone(phoneNumber, recaptchaVerifier);
+      setConfirmationResult(confirmation);
+      
+      setError('OTP resent successfully! Please check your phone.');
       startResendTimer();
       setOtpValues(['', '', '', '', '', '']);
       otpForm.setValue('otp', '');
       otpRefs.current[0]?.focus();
       
-      setError(useFirebase ? 'OTP sent successfully!' : 'Demo mode: Use OTP 123456');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to resend OTP');
+      console.error('Resend OTP error:', err);
+      setError('Failed to resend OTP. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -197,36 +208,36 @@ const MobileAuthPage: React.FC = () => {
       }
 
       // Send OTP via Firebase
-      if (useFirebase) {
-        try {
-          // Setup reCAPTCHA
-          const recaptchaVerifier = setupRecaptcha('recaptcha-container');
-          
-          // Send OTP via Firebase
-          const confirmation = await sendOTPToPhone(data.phone_number, recaptchaVerifier);
-          setConfirmationResult(confirmation);
-          
-          setPhoneNumber(data.phone_number);
-          setIsNewUser(result.is_new_user);
-          setStep('otp');
-          startResendTimer(); // Start the 60-second timer
-        } catch (firebaseError) {
-          console.error('Firebase OTP error:', firebaseError);
-          // Fallback to demo mode
-          setUseFirebase(false);
-          setPhoneNumber(data.phone_number);
-          setIsNewUser(result.is_new_user);
-          setStep('otp');
-          startResendTimer(); // Start the 60-second timer
-          setError('Using demo mode. Use OTP: 123456');
+      try {
+        console.log('Attempting to send OTP via Firebase...');
+        
+        // Clear any existing reCAPTCHA
+        const recaptchaContainer = document.getElementById('recaptcha-container');
+        if (recaptchaContainer) {
+          recaptchaContainer.innerHTML = '';
         }
-      } else {
-        // Demo mode fallback
+        
+        // Setup reCAPTCHA
+        const recaptchaVerifier = setupRecaptcha('recaptcha-container');
+        
+        if (!recaptchaVerifier) {
+          throw new Error('Failed to setup reCAPTCHA verifier');
+        }
+        
+        // Send OTP via Firebase
+        const confirmation = await sendOTPToPhone(data.phone_number, recaptchaVerifier);
+        setConfirmationResult(confirmation);
+        
+        console.log('OTP sent successfully via Firebase');
         setPhoneNumber(data.phone_number);
         setIsNewUser(result.is_new_user);
         setStep('otp');
         startResendTimer(); // Start the 60-second timer
-        setError('Demo mode: Use OTP 123456');
+        setError('OTP sent successfully! Please check your phone.');
+      } catch (firebaseError) {
+        console.error('Firebase OTP error:', firebaseError);
+        const errorMessage = firebaseError instanceof Error ? firebaseError.message : String(firebaseError);
+        throw new Error(`Failed to send OTP: ${errorMessage}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -242,20 +253,22 @@ const MobileAuthPage: React.FC = () => {
     try {
       let firebaseToken = null;
       
-      // If using Firebase, verify OTP with Firebase first
-      if (useFirebase && confirmationResult) {
+      // Verify OTP with Firebase first
+      if (confirmationResult) {
         try {
           const credential = await confirmationResult.confirm(data.otp);
           firebaseToken = await credential.user.getIdToken();
         } catch (firebaseError) {
           throw new Error('Invalid OTP. Please try again.');
         }
+      } else {
+        throw new Error('No OTP confirmation available. Please request a new OTP.');
       }
 
       let endpoint = '/api/v1/auth/mobile-verify';
       let body: any = {
         phone_number: phoneNumber,
-        otp: firebaseToken || data.otp, // Use Firebase token or demo OTP
+        otp: firebaseToken, // Use Firebase token only
       };
 
       // If new user, use signup endpoint
@@ -264,7 +277,7 @@ const MobileAuthPage: React.FC = () => {
         body = {
           phone_number: phoneNumber,
           username: phoneForm.getValues('username'),
-          firebase_token: firebaseToken || data.otp, // Use Firebase token or demo OTP
+          firebase_token: firebaseToken, // Use Firebase token only
         };
       }
 
@@ -347,8 +360,8 @@ const MobileAuthPage: React.FC = () => {
             </div>
           )}
 
-          {/* reCAPTCHA Container - Hidden but required for Firebase */}
-          <div id="recaptcha-container" ref={recaptchaRef} style={{ display: 'none' }}></div>
+          {/* reCAPTCHA Container - Visible for Firebase OTP */}
+          <div id="recaptcha-container" ref={recaptchaRef} className="flex justify-center my-4"></div>
 
           {step === 'phone' ? (
             <form onSubmit={phoneForm.handleSubmit(handlePhoneSubmit)} className="space-y-6">

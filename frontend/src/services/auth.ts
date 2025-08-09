@@ -73,7 +73,6 @@ export interface MobileAuthInitResponse {
   message: string;
   is_new_user: boolean;
   phone_number: string;
-  demo_otp?: string;
 }
 
 export interface MobileAuthVerifyRequest {
