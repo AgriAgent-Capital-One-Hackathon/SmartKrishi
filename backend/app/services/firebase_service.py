@@ -59,10 +59,20 @@ class FirebaseService:
             return None
             
         try:
-            decoded_token = auth.verify_id_token(id_token)
+            # Add clock skew tolerance for token verification
+            decoded_token = auth.verify_id_token(id_token, check_revoked=True, clock_skew_seconds=60)
             return decoded_token
         except Exception as e:
             print(f"Error verifying ID token: {e}")
+            # If clock skew error, try with more tolerance
+            if "used too early" in str(e) or "clock" in str(e).lower():
+                try:
+                    print("Retrying with increased clock skew tolerance...")
+                    decoded_token = auth.verify_id_token(id_token, check_revoked=True, clock_skew_seconds=120)
+                    return decoded_token
+                except Exception as retry_error:
+                    print(f"Retry failed: {retry_error}")
+                    return None
             return None
     
     def get_user_by_phone(self, phone_number: str) -> Optional[dict]:

@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
 import { setupRecaptcha, sendOTPToPhone } from '@/lib/firebase';
-import type { ConfirmationResult } from 'firebase/auth';
+import type { ConfirmationResult, RecaptchaVerifier } from 'firebase/auth';
 
 // Validation schemas
 const phoneSchema = z.object({
@@ -36,6 +36,7 @@ const MobileAuthPage: React.FC = () => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [error, setError] = useState<string | React.ReactNode>('');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
   
   // OTP input state
   const [otpValues, setOtpValues] = useState<string[]>(['', '', '', '', '', '']);
@@ -87,6 +88,48 @@ const MobileAuthPage: React.FC = () => {
     }
   }, [step]);
 
+  // Initialize reCAPTCHA when component mounts
+  useEffect(() => {
+    const initRecaptcha = async () => {
+      try {
+        // Wait a bit for the DOM to be fully ready
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const verifier = await setupRecaptcha('recaptcha-container');
+        setRecaptchaVerifier(verifier);
+        console.log('reCAPTCHA initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize reCAPTCHA:', error);
+        setError('Failed to initialize reCAPTCHA. Please refresh the page.');
+      }
+    };
+
+    // Only initialize if container exists
+    const container = document.getElementById('recaptcha-container');
+    if (container) {
+      initRecaptcha();
+    } else {
+      // Retry after a short delay if container not found
+      setTimeout(() => {
+        const retryContainer = document.getElementById('recaptcha-container');
+        if (retryContainer) {
+          initRecaptcha();
+        }
+      }, 1000);
+    }
+
+    // Cleanup on component unmount
+    return () => {
+      if (recaptchaVerifier) {
+        try {
+          recaptchaVerifier.clear();
+        } catch (error) {
+          console.error('Error clearing reCAPTCHA:', error);
+        }
+      }
+    };
+  }, []); // Empty dependency array to run only once
+
   // Start resend timer
   const startResendTimer = () => {
     setResendTimer(60);
@@ -134,19 +177,21 @@ const MobileAuthPage: React.FC = () => {
     try {
       console.log('Resending OTP via Firebase...');
       
-      // Clear any existing reCAPTCHA
-      const recaptchaContainer = document.getElementById('recaptcha-container');
-      if (recaptchaContainer) {
-        recaptchaContainer.innerHTML = '';
+      let verifier = recaptchaVerifier;
+      
+      // If no verifier exists or it's been used, create a new one
+      if (!verifier) {
+        // Clear any existing reCAPTCHA
+        const recaptchaContainer = document.getElementById('recaptcha-container');
+        if (recaptchaContainer) {
+          recaptchaContainer.innerHTML = '';
+        }
+        
+        verifier = await setupRecaptcha('recaptcha-container');
+        setRecaptchaVerifier(verifier);
       }
       
-      const recaptchaVerifier = setupRecaptcha('recaptcha-container');
-      
-      if (!recaptchaVerifier) {
-        throw new Error('Failed to setup reCAPTCHA verifier');
-      }
-      
-      const confirmation = await sendOTPToPhone(phoneNumber, recaptchaVerifier);
+      const confirmation = await sendOTPToPhone(phoneNumber, verifier);
       setConfirmationResult(confirmation);
       
       setError('OTP resent successfully! Please check your phone.');
@@ -211,21 +256,22 @@ const MobileAuthPage: React.FC = () => {
       try {
         console.log('Attempting to send OTP via Firebase...');
         
-        // Clear any existing reCAPTCHA
-        const recaptchaContainer = document.getElementById('recaptcha-container');
-        if (recaptchaContainer) {
-          recaptchaContainer.innerHTML = '';
-        }
+        let verifier = recaptchaVerifier;
         
-        // Setup reCAPTCHA
-        const recaptchaVerifier = setupRecaptcha('recaptcha-container');
-        
-        if (!recaptchaVerifier) {
-          throw new Error('Failed to setup reCAPTCHA verifier');
+        // If no verifier exists or it needs to be refreshed, create a new one
+        if (!verifier) {
+          // Clear any existing reCAPTCHA
+          const recaptchaContainer = document.getElementById('recaptcha-container');
+          if (recaptchaContainer) {
+            recaptchaContainer.innerHTML = '';
+          }
+          
+          verifier = await setupRecaptcha('recaptcha-container');
+          setRecaptchaVerifier(verifier);
         }
         
         // Send OTP via Firebase
-        const confirmation = await sendOTPToPhone(data.phone_number, recaptchaVerifier);
+        const confirmation = await sendOTPToPhone(data.phone_number, verifier);
         setConfirmationResult(confirmation);
         
         console.log('OTP sent successfully via Firebase');
@@ -258,6 +304,10 @@ const MobileAuthPage: React.FC = () => {
         try {
           const credential = await confirmationResult.confirm(data.otp);
           firebaseToken = await credential.user.getIdToken();
+          
+          // Add small delay to ensure token timestamp is valid
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
         } catch (firebaseError) {
           throw new Error('Invalid OTP. Please try again.');
         }
