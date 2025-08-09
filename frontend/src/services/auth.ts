@@ -28,14 +28,30 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
+    const status = error.response?.status;
+    const token = localStorage.getItem('auth_token');
+
+    // Only auto-logout/redirect if we had a token — avoid redirecting during login/signup attempts
+    if (status === 401 && token) {
+      // clear token and optionally update your zustand store
       localStorage.removeItem('auth_token');
+
+      // If you want to update zustand store too (graceful)
+      try {
+        // import/use the store's logout action (works because authStore uses zustand)
+        const { logout } = require('@/store/authStore').useAuthStore.getState();
+        logout();
+      } catch (e) {
+        // fallback - still fine to remove token
+        console.warn('Could not call logout on store', e);
+      }
+
       window.location.href = '/mobile-auth';
     }
     return Promise.reject(error);
   }
 );
+
 
 // Types
 export interface User {

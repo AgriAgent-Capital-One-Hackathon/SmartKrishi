@@ -57,9 +57,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // Only redirect if we're sure the user is not authenticated
-  if (!isAuthenticated && !token) {
-    return <Navigate to="/mobile-auth" replace state={{ from: location }} />;
-  }
+   if (!isAuthenticated && !token) {
+     const publicPaths = ['/login', '/signup', '/mobile-auth', '/mobile-login'];
+     if (!publicPaths.includes(location.pathname)) {
+       return <Navigate to="/mobile-auth" replace state={{ from: location }} />;
+     }
+   }
 
   return <>{children}</>;
 };
