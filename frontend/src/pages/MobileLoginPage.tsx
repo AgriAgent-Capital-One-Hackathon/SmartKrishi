@@ -31,6 +31,7 @@ const MobileLoginPage: React.FC = () => {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [error, setError] = useState<string | React.ReactNode>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   
   // OTP input state
@@ -146,12 +147,13 @@ const MobileLoginPage: React.FC = () => {
       console.log('Resending OTP via Firebase...');
       
       // Create a new reCAPTCHA verifier for resend
-      const verifier = await setupRecaptcha('recaptcha-container', { forceNew: true, size: 'invisible' });
+      const verifier = await setupRecaptcha('recaptcha-container', {size: 'invisible' });
       
       const confirmation = await sendOTPToPhone(phoneNumber, verifier);
       setConfirmationResult(confirmation);
       
-      setError('OTP resent successfully! Please check your phone.');
+      setError(''); // Clear any previous errors
+      setSuccessMessage('OTP resent successfully! Please check your phone.');
       startResendTimer();
       
       // Clear OTP inputs
@@ -161,6 +163,7 @@ const MobileLoginPage: React.FC = () => {
       
     } catch (err) {
       console.error('Resend OTP error:', err);
+      setSuccessMessage(''); // Clear any success messages
       setError(err instanceof Error ? err.message : 'Failed to resend OTP. Please try again.');
     } finally {
       setLoading(false);
@@ -169,6 +172,7 @@ const MobileLoginPage: React.FC = () => {
 
   const handlePhoneSubmit = async (data: PhoneFormData) => {
     setError('');
+    setSuccessMessage(''); // Clear any previous success messages
     setLoading(true);
 
     try {
@@ -209,7 +213,8 @@ const MobileLoginPage: React.FC = () => {
         setPhoneNumber(data.phone_number);
         setStep('otp');
         startResendTimer(); // Start the 60-second timer
-        setError('OTP sent successfully! Please check your phone.');
+        setError(''); // Clear any previous errors
+        setSuccessMessage('OTP sent successfully! Please check your phone.');
       } catch (firebaseError) {
         console.error('Firebase OTP error:', firebaseError);
         const errorMessage = firebaseError instanceof Error ? firebaseError.message : String(firebaseError);
@@ -237,6 +242,7 @@ const MobileLoginPage: React.FC = () => {
         return;
       }
     } catch (err) {
+      setSuccessMessage(''); // Clear any success messages
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
@@ -343,6 +349,12 @@ const MobileLoginPage: React.FC = () => {
                 ) : (
                   error
                 )}
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-green-700 text-sm">{successMessage}</p>
               </div>
             )}
 

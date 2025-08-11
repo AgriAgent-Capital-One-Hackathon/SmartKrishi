@@ -35,6 +35,7 @@ const MobileAuthPage: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [isNewUser, setIsNewUser] = useState(false);
   const [error, setError] = useState<string | React.ReactNode>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   
   // OTP input state
@@ -156,7 +157,8 @@ const MobileAuthPage: React.FC = () => {
       const confirmation = await sendOTPToPhone(phoneNumber, verifier);
       setConfirmationResult(confirmation);
       
-      setError('OTP resent successfully! Please check your phone.');
+      setError(''); // Clear any previous errors
+      setSuccessMessage('OTP resent successfully! Please check your phone.');
       startResendTimer();
       setOtpValues(['', '', '', '', '', '']);
       otpForm.setValue('otp', '');
@@ -164,6 +166,7 @@ const MobileAuthPage: React.FC = () => {
       
     } catch (err) {
       console.error('Resend OTP error:', err);
+      setSuccessMessage(''); // Clear any success messages
       setError(err instanceof Error ? err.message : 'Failed to resend OTP. Please try again.');
     } finally {
       setLoading(false);
@@ -172,6 +175,7 @@ const MobileAuthPage: React.FC = () => {
 
   const handlePhoneSubmit = async (data: PhoneFormData) => {
     setError('');
+    setSuccessMessage(''); // Clear any previous success messages
     setLoading(true);
 
     try {
@@ -230,7 +234,8 @@ const MobileAuthPage: React.FC = () => {
         setIsNewUser(result.is_new_user);
         setStep('otp');
         startResendTimer(); // Start the 60-second timer
-        setError('OTP sent successfully! Please check your phone.');
+        setError(''); // Clear any previous errors
+        setSuccessMessage('OTP sent successfully! Please check your phone.');
       } catch (firebaseError) {
         console.error('Firebase OTP error:', firebaseError);
         const errorMessage = firebaseError instanceof Error ? firebaseError.message : String(firebaseError);
@@ -258,6 +263,7 @@ const MobileAuthPage: React.FC = () => {
         return;
       }
     } catch (err) {
+      setSuccessMessage(''); // Clear any success messages
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
@@ -382,6 +388,12 @@ const MobileAuthPage: React.FC = () => {
               ) : (
                 error
               )}
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-green-700 text-sm">{successMessage}</p>
             </div>
           )}
 
