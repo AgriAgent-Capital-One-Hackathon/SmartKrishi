@@ -1,48 +1,23 @@
-# Core FastAPI and server
-fastapi==0.100.1
-uvicorn==0.23.2
-
-# Database stack
-sqlalchemy==1.4.48
-psycopg2-binary==2.9.7
-alembic==1.11.1
-
-# Authentication and Security
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
-PyJWT==2.10.1
-bcrypt==4.3.0
-
-# Data validation and serialization
-pydantic==1.10.12
-
-# Configuration management
-python-decouple==3.8
-python-dotenv==1.0.0
-
-# Google Services
-google-generativeai==0.2.2
-firebase-admin==6.0.1
-
-# Phone validation
-phonenumbers==8.13.14
-
-# HTTP utilities
-requests==2.31.0
-
-# Rate limiting
-slowapi==0.1.8
-
-# Image processing (updated version for Python 3.13 compatibility)
-Pillow==10.4.0
-
-# Core Python dependencies
-typing-extensions==4.7.1
-
-# Additional security and utility packages
+fastapi>=0.115.8       # ensures official Python 3.13 support
+uvicorn>=0.32.0
+sqlalchemy>=2.0.36
+psycopg2-binary>=2.9.7
+alembic>=1.13.3
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.12
+PyJWT>=2.10.1
+bcrypt>=4.3.0
+pydantic>=2.10.3
+python-decouple>=3.8
+python-dotenv>=1.0.0
+google-generativeai>=0.2.2
+firebase-admin>=6.0.1
+phonenumbers>=8.13.14
+requests>=2.31.0
+slowapi>=0.1.8
+Pillow>=10.4.0
+typing-extensions>=4.7.1
 cryptography>=41.0.0
-email-validator==2.1.0
-
-# Production server (optional, for Render deployment)
-gunicorn==21.2.0
+email-validator>=2.1.0
+gunicorn>=21.2.0
