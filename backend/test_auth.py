@@ -5,7 +5,7 @@ Simple test script to verify authentication endpoints
 import requests
 import json
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "http://127.0.0.1:8000/api/v1"
 
 def test_signup():
     """Test user signup"""
