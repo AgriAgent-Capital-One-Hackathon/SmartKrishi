@@ -1,43 +1,39 @@
-# Core FastAPI and server
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-starlette==0.27.0
+# Core FastAPI and server (stable versions)
+fastapi==0.100.1
+uvicorn==0.23.2
 
-# Database
-sqlalchemy==2.0.23
-psycopg2-binary==2.9.9
-alembic==1.12.1
+# Database (stable versions)
+sqlalchemy==1.4.48
+psycopg2-binary==2.9.7
+alembic==1.11.1
 
 # Authentication and Security  
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
+python-jose==3.3.0
+passlib==1.7.4
 python-multipart==0.0.6
 
-# Pydantic (use version without Rust compilation issues)
-pydantic==1.10.13
-email-validator==2.1.0
+# Pydantic v1 (stable, no Rust compilation)
+pydantic==1.10.12
 
 # Configuration
 python-decouple==3.8
 python-dotenv==1.0.0
 
-# Google Services
-google-generativeai==0.3.2
-firebase-admin==6.2.0
+# Google Services (compatible versions)
+google-generativeai==0.2.2
+firebase-admin==6.0.1
 
 # Phone validation
-phonenumbers==8.13.27
+phonenumbers==8.13.14
 
-# HTTP and utilities
+# HTTP utilities
 requests==2.31.0
-httpx==0.25.2
 
 # Rate limiting
-slowapi==0.1.9
+slowapi==0.1.8
 
-# Image processing
-Pillow==10.0.1
+# Image processing  
+Pillow==9.5.0
 
-# Additional dependencies
-typing-extensions==4.8.0
-annotated-types==0.6.0
+# Core Python dependencies
+typing-extensions==4.7.1
