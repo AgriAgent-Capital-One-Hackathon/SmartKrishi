@@ -1,7 +1,6 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import 'highlight.js/styles/github.css';
 
 interface MessageProps {
   role: 'user' | 'assistant';
@@ -12,54 +11,75 @@ interface MessageProps {
 export default function Message({ role, content, timestamp }: MessageProps) {
   const isUser = role === 'user';
   
-  // Debug logging for assistant messages
-  if (!isUser) {
-    console.log('💬 Assistant Message Debug:', {
-      contentLength: content.length,
-      contentPreview: content.substring(0, 100),
-      hasMarkdownChars: {
-        headers: content.includes('#'),
-        bold: content.includes('**'),
-        lists: content.includes('*') || content.includes('-'),
-        emojis: /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(content)
-      }
-    });
-  }
-  
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`max-w-[80%] ${isUser ? 'ml-12' : 'mr-12'}`}>
-        <div
-          className={`rounded-2xl px-4 py-3 ${
-            isUser
-              ? 'bg-green-600 text-white'
-              : 'bg-gray-100 text-gray-900 border border-gray-200'
-          }`}
-        >
-          {isUser ? (
-            // User messages - simple text
+  if (isUser) {
+    // User messages - keep as bubbles (right-aligned)
+    return (
+      <div className="flex justify-end mb-4">
+        <div className="max-w-[80%]">
+          <div className="rounded-2xl px-4 py-3 bg-green-600 text-white">
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
-          ) : (
-            // Assistant messages - check if content exists first
-            content && content.trim() ? (
-              <div className="prose prose-sm max-w-none">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeHighlight]}
-                >
-                  {content}
-                </ReactMarkdown>
-              </div>
-            ) : (
-              <p className="text-red-500 text-sm">No response content received</p>
-            )
-          )}
+          </div>
+          <div className="text-xs text-gray-500 mt-1 text-right">
+            {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
         </div>
-        
-        {/* Timestamp */}
-        <div className={`text-xs text-gray-500 mt-1 ${isUser ? 'text-right' : 'text-left'}`}>
-          {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </div>
+      </div>
+    );
+  }
+
+  // AI messages - Clean ChatGPT style (just the message content)
+  return (
+    <div className="w-full">
+      <div className="text-gray-900">
+        {content && content.trim() ? (
+          <div className="prose prose-sm max-w-none prose-gray">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeHighlight]}
+              components={{
+                // Customize code blocks
+                code: ({ inline, className, children, ...props }: any) => {
+                  const match = /language-(\w+)/.exec(className || '')
+                  return !inline ? (
+                    <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto my-4">
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    </pre>
+                  ) : (
+                    <code className="bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm" {...props}>
+                      {children}
+                    </code>
+                  )
+                },
+                // Customize other elements
+                p: ({ children }) => <p className="mb-2 leading-relaxed">{children}</p>,
+                ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                h1: ({ children }) => <h1 className="text-xl font-bold mb-2">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-lg font-bold mb-2">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-md font-bold mb-2">{children}</h3>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                em: ({ children }) => <em className="italic">{children}</em>,
+                blockquote: ({ children }) => (
+                  <blockquote className="border-l-4 border-gray-300 pl-4 italic my-2">
+                    {children}
+                  </blockquote>
+                ),
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
+        ) : (
+          <p className="text-red-500 text-sm">No response content received</p>
+        )}
+      </div>
+      
+      {/* Timestamp only - small and subtle */}
+      <div className="text-xs text-gray-400 mt-2">
+        {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </div>
     </div>
   );

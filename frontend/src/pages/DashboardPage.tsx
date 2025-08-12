@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useLayoutEffect, useRef, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import ChatInput from "@/components/ui/chat-input"
 import Message from "@/components/ui/message"
@@ -55,6 +55,7 @@ export default function DashboardPage() {
   const [suggestionCards, setSuggestionCards] = useState<SuggestionCard[]>([]);
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load suggestions from API
   useEffect(() => {
@@ -102,6 +103,16 @@ export default function DashboardPage() {
     loadSuggestions();
   }, []);
 
+  // Auto-scroll to bottom after every new message
+  useLayoutEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'end'
+      });
+    }
+  }, [messages]);
+
   const handleNewChat = () => {
     setMessages([]);
     setMessage('');
@@ -114,15 +125,12 @@ export default function DashboardPage() {
     try {
       setIsLoading(true);
       const chat = await chatService.getChat(chatId);
-      
-      // Convert backend messages to frontend format
       const chatMessages: ChatMessage[] = chat.messages.map(msg => ({
         id: msg.id,
         role: msg.role as 'user' | 'assistant',
         content: msg.content,
         timestamp: new Date(msg.created_at)
       }));
-      
       setMessages(chatMessages);
       setCurrentChatId(chatId);
       setShowSuggestions(chatMessages.length === 0);
@@ -149,30 +157,37 @@ export default function DashboardPage() {
 
   const handleFileUpload = async (file: File) => {
     if (isLoading) return;
-
-    setIsLoading(true);
     setShowSuggestions(false);
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: `📷 Uploaded image: ${file.name}`,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
 
     try {
       const response = await chatService.analyzeImage(file, `Analyze this crop image: ${file.name}`, currentChatId || undefined);
-      
-      // If this created a new chat, update current chat ID
       if (!currentChatId) {
         setCurrentChatId(response.chat_id);
       }
-      
-      // Reload the chat to get updated messages
-      await handleChatSelect(response.chat_id);
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response.response,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
       console.error('Failed to analyze image:', error);
-      // Show error message
-      const errorMessage: ChatMessage = {
-        id: Date.now().toString(),
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: 'Sorry, I couldn\'t analyze the image. Please try again.',
         timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -183,29 +198,37 @@ export default function DashboardPage() {
 
     const messageText = message.trim();
     setMessage('');
-    setIsLoading(true);
     setShowSuggestions(false);
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: messageText,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
 
     try {
       const response = await chatService.sendMessage(messageText, currentChatId || undefined);
-      
-      // If this created a new chat, update current chat ID
       if (!currentChatId) {
         setCurrentChatId(response.chat_id);
       }
-      
-      // Reload the chat to get updated messages
-      await handleChatSelect(response.chat_id);
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response.response,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
       console.error('Failed to send message:', error);
-      // Show error message
-      const errorMessage: ChatMessage = {
-        id: Date.now().toString(),
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: 'Sorry, I couldn\'t process your message. Please try again.',
         timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -220,85 +243,118 @@ export default function DashboardPage() {
         onSettingsClick={() => setIsSettingsOpen(true)}
       />
 
-      {/* Main Content - Fixed height with flex column */}
+      {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen">
-        {/* Welcome Message or Chat Messages - Scrollable area */}
         {showSuggestions ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto">
-            <div className="text-center max-w-2xl mb-8">
-              <div className="mb-4">
-                <span className="text-6xl">🌱</span>
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex flex-col items-center justify-center min-h-full">
+              <div className="text-center max-w-2xl mb-8">
+                <div className="mb-4">
+                  <span className="text-6xl">🌱</span>
+                </div>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                  Welcome to SmartKrishi
+                </h1>
+                <p className="text-lg text-gray-600">
+                  Your AI-powered farming assistant. Ask me anything about agriculture, crops, or farming techniques.
+                </p>
               </div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                Welcome to SmartKrishi
-              </h1>
-              <p className="text-lg text-gray-600">
-                Your AI-powered farming assistant. Ask me anything about agriculture, crops, or farming techniques.
-              </p>
-            </div>
-
-            {/* Suggestion Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl">
-              {suggestionCards.map((card) => (
-                <Card 
-                  key={card.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow border-green-100 hover:border-green-200"
-                  onClick={() => handleSuggestionClick(card.prompt)}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
-                        {card.icon}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl">
+                {suggestionCards.map((card) => (
+                  <Card 
+                    key={card.id}
+                    className="cursor-pointer hover:shadow-md transition-shadow border-green-100 hover:border-green-200"
+                    onClick={() => handleSuggestionClick(card.prompt)}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex-shrink-0">
+                          {card.icon}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-800 mb-1">
+                            {card.text}
+                          </h3>
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {card.prompt}
+                          </p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-800 mb-1">
-                          {card.text}
-                        </h3>
-                        <p className="text-sm text-gray-600 line-clamp-2">
-                          {card.prompt}
-                        </p>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
-          /* Chat Messages - Scrollable area with fixed height */
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-4xl mx-auto space-y-6">
+          <div className="flex-1 overflow-y-auto">
+            <div className="w-full">
               {messages.map((msg) => (
-                <Message 
-                  key={msg.id} 
-                  role={msg.role}
-                  content={msg.content}
-                  timestamp={msg.timestamp}
-                />
+                msg.role === 'assistant' ? (
+                  // AI messages - full width ChatGPT style with same background
+                  <div
+                    key={msg.id}
+                    className="w-full py-4 bg-white"
+                  >
+                    <div className="max-w-4xl mx-auto px-6">
+                      <Message 
+                        role={msg.role}
+                        content={msg.content}
+                        timestamp={msg.timestamp}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  // User messages - same background as AI messages
+                  <div
+                    key={msg.id}
+                    className="w-full py-4 bg-white"
+                  >
+                    <div className="max-w-4xl mx-auto px-6">
+                      <Message 
+                        role={msg.role}
+                        content={msg.content}
+                        timestamp={msg.timestamp}
+                      />
+                    </div>
+                  </div>
+                )
               ))}
               
               {/* Loading indicator */}
               {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-white rounded-2xl shadow-sm border px-6 py-4 max-w-2xl">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-full py-4 bg-white">
+                  <div className="max-w-4xl mx-auto px-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                        <div className="w-4 h-4 text-white">🤖</div>
                       </div>
-                      <span className="text-sm text-gray-600">SmartKrishi AI is thinking...</span>
+                      <div className="flex-1">
+                        <div className="mb-1">
+                          <span className="text-sm font-medium text-gray-900">SmartKrishi AI</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          </div>
+                          <span className="text-sm text-gray-600">Thinking...</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
+              
+              <div ref={messagesEndRef} style={{ height: '1px' }} />
             </div>
           </div>
         )}
 
-        {/* Fixed Chat Input at Bottom - Always stays at bottom */}
-        <div className="flex-shrink-0 border-t border-gray-200 bg-white">
+        {/* Fixed Chat Input at Bottom */}
+        <div className="flex-shrink-0 bg-gray-50 border-none">
           <ChatInput
             value={message}
             onChange={setMessage}
@@ -310,7 +366,6 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* History Drawer */}
       <HistoryDrawer
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
@@ -319,7 +374,6 @@ export default function DashboardPage() {
         currentChatId={currentChatId || undefined}
       />
 
-      {/* Settings Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
