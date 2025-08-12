@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: smartkrishi-backend
+    name: smartkrishi
     env: python
     region: oregon
     plan: free
