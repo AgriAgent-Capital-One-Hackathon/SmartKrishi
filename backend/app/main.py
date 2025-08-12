@@ -2,13 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from decouple import config
 import os
+import logging
+from sqlalchemy import text
 
-from app.db.database import engine
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+from app.db.database import engine, Base
 from app.models import user  # Import models to create tables
 from app.routers import auth, mobile_auth, chat  # Add chat import
-
-# Create database tables
-user.Base.metadata.create_all(bind=engine)
 
 # Create FastAPI instance
 app = FastAPI(
@@ -44,6 +47,17 @@ app.add_middleware(
 # API version prefix
 API_V1_STR = config("API_V1_STR", default="/api/v1")
 
+# Create database tables safely at startup
+@app.on_event("startup")
+async def startup_event():
+    try:
+        # Create tables
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ Database tables created successfully")
+    except Exception as e:
+        logger.error(f"❌ Database connection failed: {e}")
+        # Don't crash the app, just log the error
+
 # Include routers
 app.include_router(auth.router, prefix=f"{API_V1_STR}/auth", tags=["authentication"])
 app.include_router(mobile_auth.router, prefix=f"{API_V1_STR}/auth", tags=["mobile-authentication"])
@@ -62,8 +76,26 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy"}
+    """Health check endpoint with database connection test."""
+    try:
+        # Test database connection
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {
+            "status": "healthy", 
+            "service": "SmartKrishi API",
+            "database": "connected",
+            "version": "1.0.0"
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            "status": "unhealthy", 
+            "service": "SmartKrishi API",
+            "database": "disconnected",
+            "error": str(e),
+            "version": "1.0.0"
+        }
 
 
 if __name__ == "__main__":

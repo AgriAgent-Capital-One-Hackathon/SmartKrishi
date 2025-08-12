@@ -8,7 +8,9 @@ services:
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: smartkrishi-postgres
+          property: connectionString
       - key: SECRET_KEY
         sync: false
       - key: GEMINI_API_KEY
@@ -27,5 +29,5 @@ services:
 databases:
   - name: smartkrishi-postgres
     plan: free
-    databaseName: smartkrishi_db
+    databaseName: smartkrishi_db_7uan
     user: smartkrishi_user
