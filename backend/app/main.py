@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from decouple import config
+import os
 
 from app.db.database import engine
 from app.models import user  # Import models to create tables
@@ -16,10 +17,25 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Production CORS settings - Include your Vercel URL
+origins = [
+    "http://localhost:3000",
+    "http://localhost:5173", 
+    "http://127.0.0.1:3000", 
+    "http://127.0.0.1:5173",
+    "https://smart-krishi-nine.vercel.app",  # Your Vercel frontend URL
+    "https://*.vercel.app",  # For Vercel preview deployments
+]
+
+# Add environment-based frontend URL
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url and frontend_url not in origins:
+    origins.append(frontend_url)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
