@@ -7,8 +7,12 @@ import SignupPage from "@/pages/SignupPage"
 import MobileAuthPage from "@/pages/MobileAuthPage"
 import MobileLoginPage from "@/pages/MobileLoginPage"
 import DashboardPage from "@/pages/DashboardPage"
+import { useAuthInit } from "@/hooks/useAuthInit"
 
 function App() {
+  // Initialize authentication state on app startup
+  useAuthInit();
+
   return (
     <ThemeProvider defaultTheme="light" storageKey="smartkrishi-ui-theme">
       <Router>

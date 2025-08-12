@@ -32,7 +32,7 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       isAuthenticating: false,
       user: null,
-      token: null, // Remove the localStorage.getItem() call here
+      token: null,
       
       login: (token: string, user: User) => {
         localStorage.setItem('auth_token', token);
@@ -65,6 +65,12 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      // Ensure localStorage token stays in sync
+      onRehydrateStorage: () => (state) => {
+        if (state?.token && !localStorage.getItem('auth_token')) {
+          localStorage.setItem('auth_token', state.token);
+        }
+      },
     }
   )
 );

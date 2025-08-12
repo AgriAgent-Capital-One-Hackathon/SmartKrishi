@@ -20,15 +20,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         return;
       }
 
-      // If we already know the user is authenticated, no need to check again
-      if (isAuthenticated) {
+      // If user is already authenticated and has token, no need to check again
+      if (isAuthenticated && token) {
         setIsChecking(false);
         return;
       }
 
-      if (token) {
-        // We have a token but user not authenticated in state.
-        // This handles page reloads where we need to verify the token.
+      // If we have a token but user is not authenticated in state,
+      // this handles page reloads/new tabs where we need to verify the token
+      if (token && !isAuthenticated) {
         try {
           setLoading(true);
           const user = await authService.getCurrentUser();
@@ -56,13 +56,21 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  // Only redirect if we're sure the user is not authenticated
-   if (!isAuthenticated && !token) {
-     const publicPaths = ['/login', '/signup', '/mobile-auth', '/mobile-login'];
-     if (!publicPaths.includes(location.pathname)) {
-       return <Navigate to="/mobile-auth" replace state={{ from: location }} />;
-     }
-   }
+  // Only redirect if we're sure the user is not authenticated AND we've completed the auth check
+  if (!isAuthenticated && !token) {
+    const publicPaths = ['/login', '/signup', '/mobile-auth', '/mobile-login', '/'];
+    if (!publicPaths.includes(location.pathname)) {
+      return <Navigate to="/mobile-auth" replace state={{ from: location }} />;
+    }
+  }
+
+  // If user is authenticated but trying to access auth pages, redirect to dashboard
+  if (isAuthenticated && token) {
+    const authPaths = ['/login', '/signup', '/mobile-auth', '/mobile-login', '/'];
+    if (authPaths.includes(location.pathname)) {
+      return <Navigate to="/dashboard" replace />;
+    }
+  }
 
   return <>{children}</>;
 };
