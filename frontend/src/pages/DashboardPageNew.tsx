@@ -220,11 +220,11 @@ export default function DashboardPage() {
         onSettingsClick={() => setIsSettingsOpen(true)}
       />
 
-      {/* Main Content - Fixed height with flex column */}
-      <main className="flex-1 flex flex-col h-screen">
-        {/* Welcome Message or Chat Messages - Scrollable area */}
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col">
+        {/* Welcome Message or Chat Messages */}
         {showSuggestions ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto">
+          <div className="flex-1 flex flex-col items-center justify-center p-8">
             <div className="text-center max-w-2xl mb-8">
               <div className="mb-4">
                 <span className="text-6xl">🌱</span>
@@ -266,39 +266,41 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          /* Chat Messages - Scrollable area with fixed height */
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-4xl mx-auto space-y-6">
-              {messages.map((msg) => (
-                <Message 
-                  key={msg.id} 
-                  role={msg.role}
-                  content={msg.content}
-                  timestamp={msg.timestamp}
-                />
-              ))}
-              
-              {/* Loading indicator */}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-white rounded-2xl shadow-sm border px-6 py-4 max-w-2xl">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          <div className="flex-1 flex flex-col">
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-4xl mx-auto space-y-6">
+                {messages.map((msg) => (
+                  <Message 
+                    key={msg.id} 
+                    role={msg.role}
+                    content={msg.content}
+                    timestamp={msg.timestamp}
+                  />
+                ))}
+                
+                {/* Loading indicator */}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-white rounded-2xl shadow-sm border px-6 py-4 max-w-2xl">
+                      <div className="flex items-center space-x-2">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                        <span className="text-sm text-gray-600">SmartKrishi AI is thinking...</span>
                       </div>
-                      <span className="text-sm text-gray-600">SmartKrishi AI is thinking...</span>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* Fixed Chat Input at Bottom - Always stays at bottom */}
-        <div className="flex-shrink-0 border-t border-gray-200 bg-white">
+        {/* Fixed Chat Input at Bottom */}
+        <div className="flex-shrink-0">
           <ChatInput
             value={message}
             onChange={setMessage}
