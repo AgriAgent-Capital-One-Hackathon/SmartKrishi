@@ -1,3 +1,6 @@
+/* Import highlight.js theme for code syntax highlighting */
+@import 'highlight.js/styles/github.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -56,4 +59,27 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom styles for markdown content */
+.prose {
+  color: inherit;
+}
+
+.prose p {
+  margin-bottom: 0.5rem;
+}
+
+.prose ul, .prose ol {
+  margin-bottom: 0.5rem;
+}
+
+.prose li {
+  margin-bottom: 0.25rem;
+}
+
+/* Override highlight.js background for better integration */
+.hljs {
+  background: #1f2937 !important;
+  color: #f9fafb !important;
 }

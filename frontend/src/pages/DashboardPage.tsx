@@ -1,26 +1,21 @@
 import React, { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import ChatInput from "@/components/ui/chat-input"
+import Message from "@/components/ui/message"
 import Header from "@/components/ui/header"
 import { 
   Leaf, 
   Sun, 
   Bug, 
   DollarSign,
-  User,
-  Bot
+  Sparkles,
+  ChevronRight,
+  LogOut
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authService } from "@/services/auth"
 import { chatService, type ChatMessage } from '../services/chatService';
-
-interface Message {
-  id: string
-  content: string
-  role: 'user' | 'assistant'
-  timestamp: Date
-}
 
 interface SuggestionCard {
   id: string
@@ -108,7 +103,7 @@ export default function DashboardPage() {
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: `[Uploaded image: ${file.name}]`,
+      content: `📷 Uploaded image: ${file.name}`,
       timestamp: new Date()
     };
 
@@ -159,12 +154,21 @@ export default function DashboardPage() {
     try {
       const response = await chatService.sendMessage(message.trim(), messages);
       
+      // Debug logging
+      console.log('🔄 Chat API Response:', {
+        responseType: typeof response,
+        responseLength: response.length,
+        responsePreview: response.substring(0, 200)
+      });
+      
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: response,
         timestamp: new Date()
       };
+
+      console.log('📨 Created assistant message:', assistantMessage);
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
@@ -248,64 +252,28 @@ export default function DashboardPage() {
         ) : (
           /* Chat Messages Area - Scrollable */
           <div className="flex-1 overflow-y-auto py-4 pr-4">
-            <div className="space-y-6 pb-4">
+            <div className="space-y-2 pb-4">
               {messages.map((msg) => (
-                <div
+                <Message
                   key={msg.id}
-                  className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {msg.role === 'assistant' && (
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                        <Bot className="w-5 h-5 text-white" />
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className={`max-w-[80%] ${msg.role === 'user' ? 'order-2' : ''}`}>
-                    <div
-                      className={`px-4 py-3 rounded-lg ${
-                        msg.role === 'user'
-                          ? 'bg-green-600 text-white ml-auto'
-                          : 'bg-white border border-gray-200 text-gray-900'
-                      }`}
-                    >
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {msg.content}
-                      </div>
-                    </div>
-                    <div className={`text-xs text-gray-500 mt-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-
-                  {msg.role === 'user' && (
-                    <div className="flex-shrink-0 order-3">
-                      <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-white" />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  role={msg.role}
+                  content={msg.content}
+                  timestamp={msg.timestamp}
+                />
               ))}
 
               {/* Loading indicator */}
               {isLoading && (
-                <div className="flex gap-4 justify-start">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                      <Bot className="w-5 h-5 text-white" />
-                    </div>
-                  </div>
-                  <div className="max-w-[80%]">
-                    <div className="px-4 py-3 rounded-lg bg-white border border-gray-200">
+                <div className="flex justify-start mb-4">
+                  <div className="max-w-[80%] mr-12">
+                    <div className="bg-gray-100 text-gray-900 border border-gray-200 rounded-2xl px-4 py-3">
                       <div className="flex items-center space-x-2">
                         <div className="flex space-x-1">
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                         </div>
-                        <span className="text-sm text-gray-500">SmartKrishi is thinking...</span>
+                        <span className="text-sm text-gray-600">SmartKrishi AI is thinking...</span>
                       </div>
                     </div>
                   </div>
