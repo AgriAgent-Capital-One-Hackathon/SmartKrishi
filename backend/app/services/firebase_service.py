@@ -1,6 +1,7 @@
 import firebase_admin
 from firebase_admin import credentials, auth
 import os
+import json
 from typing import Optional
 from dotenv import load_dotenv
 import jwt
@@ -27,57 +28,90 @@ class FirebaseService:
             return
 
         try:
+            # Check if Firebase is already initialized
             firebase_admin.get_app()
             self._initialized = True
+            print("✅ Firebase Admin SDK already initialized")
+            return
         except ValueError:
-            service_account_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-            if not service_account_path:
-                print("Warning: GOOGLE_APPLICATION_CREDENTIALS not set. Firebase features will be disabled.")
-                return
+            pass  # App not initialized yet, continue
 
-            if not os.path.exists(service_account_path):
-                print(f"Warning: Firebase service account key file not found at {service_account_path}. Firebase features will be disabled.")
-                return
-
+        try:
+            # First, try to get credentials from environment variable as JSON content
+            firebase_credentials = os.getenv('FIREBASE_CREDENTIALS') or os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+            
+            if firebase_credentials:
+                try:
+                    # Try to parse as JSON first (for Render environment)
+                    if firebase_credentials.strip().startswith('{'):
+                        print("🔧 Parsing Firebase credentials from environment variable...")
+                        credentials_dict = json.loads(firebase_credentials)
+                        cred = credentials.Certificate(credentials_dict)
+                        firebase_admin.initialize_app(cred, {
+                            'projectId': 'smartkrishi-83352'
+                        })
+                        self._initialized = True
+                        print("✅ Firebase Admin SDK initialized from environment JSON")
+                        return
+                    else:
+                        # Treat as file path
+                        if os.path.exists(firebase_credentials):
+                            print(f"🔧 Loading Firebase credentials from file: {firebase_credentials}")
+                            cred = credentials.Certificate(firebase_credentials)
+                            firebase_admin.initialize_app(cred, {
+                                'projectId': 'smartkrishi-83352'
+                            })
+                            self._initialized = True
+                            print("✅ Firebase Admin SDK initialized from file")
+                            return
+                        else:
+                            print(f"❌ Firebase credentials file not found: {firebase_credentials}")
+                
+                except json.JSONDecodeError as e:
+                    print(f"❌ Failed to parse Firebase credentials JSON: {e}")
+                except Exception as e:
+                    print(f"❌ Failed to initialize Firebase with provided credentials: {e}")
+            
+            # Fallback: try default credentials (for Google Cloud environments)
             try:
-                cred = credentials.Certificate(service_account_path)
-                firebase_admin.initialize_app(cred, {
-                    'projectId': 'smartkrishi-83352'  # Must match frontend firebaseConfig
-                })
+                print("🔧 Trying default Firebase credentials...")
+                firebase_admin.initialize_app()
                 self._initialized = True
-                print("✅ Firebase Admin SDK initialized successfully")
-            except Exception as e:
-                print(f"Warning: Failed to initialize Firebase: {e}")
+                print("✅ Firebase Admin SDK initialized with default credentials")
                 return
+            except Exception as e:
+                print(f"❌ Failed to initialize with default credentials: {e}")
+            
+            print("❌ Warning: Could not initialize Firebase Admin SDK. Firebase features will be disabled.")
+            
+        except Exception as e:
+            print(f"❌ Error initializing Firebase Admin SDK: {e}")
+            self._initialized = False
 
     def verify_id_token(self, id_token: str) -> Optional[dict]:
-        """
-        Verify Firebase ID token and return user info.
-        Logs detailed information on failure for debugging.
-        """
-        self._initialize_firebase()
+        """Verify Firebase ID token and return user data"""
+        if not self._initialized:
+            self._initialize_firebase()
+        
         if not self._initialized:
             print("Firebase not initialized. Cannot verify ID token.")
             return None
-
+        
+        if not id_token:
+            print("No ID token provided")
+            return None
+        
         try:
-            print(f"Verifying Firebase ID token (length: {len(id_token)})")
-            decoded_token = auth.verify_id_token(id_token, check_revoked=False,clock_skew_seconds=10)
+            print(f"Verifying Firebase token: {id_token[:50]}...")
+            decoded_token = auth.verify_id_token(id_token, check_revoked=True)
             print(f"✅ Token verified for user: {decoded_token.get('phone_number', decoded_token.get('uid'))}")
             return decoded_token
-
         except Exception as e:
-            print(f"❌ Error verifying ID token: {e}")
-
-            # Decode without verifying to inspect claims
-            try:
-                unverified_claims = jwt.decode(id_token, options={"verify_signature": False})
-                print("🔍 Unverified token claims:", unverified_claims)
-            except Exception as decode_err:
-                print("⚠️ Failed to decode token without verification:", decode_err)
-
+            print(f"❌ Token verification failed: {e}")
+            
+            # Handle specific error cases with retries
             error_str = str(e).lower()
-
+            
             # Retry if clock skew or issued-at errors
             if any(phrase in error_str for phrase in ["used too early", "clock", "issued at", "timestamp"]):
                 try:
@@ -88,17 +122,7 @@ class FirebaseService:
                 except Exception as retry_error:
                     print(f"Retry failed: {retry_error}")
                     return None
-
-            # Expired tokens
-            if "expired" in error_str:
-                print("Token is expired. Client should request a new token.")
-                return None
-
-            # Invalid/malformed tokens
-            if any(phrase in error_str for phrase in ["invalid", "malformed", "decode"]):
-                print("Token is invalid or malformed.")
-                return None
-
+            
             return None
 
     def get_user_by_phone(self, phone_number: str) -> Optional[dict]:
