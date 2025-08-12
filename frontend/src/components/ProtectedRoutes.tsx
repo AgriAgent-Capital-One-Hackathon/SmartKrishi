@@ -10,32 +10,35 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
   useEffect(() => {
     const checkAuth = async () => {
-      // If user is already authenticated, no need to check
-      if (isAuthenticated && token) {
-        setIsChecking(false);
-        return;
-      }
-
-      // If there's a token but user is not authenticated, verify it
-      if (token && !isAuthenticated) {
-        // this handles page reloads/new tabs where we need to verify the token
-        try {
-          setLoading(true);
-          const user = await authService.getCurrentUser();
-          login(token, user);
-        } catch (error) {
-          console.error('Token verification failed:', error);
-          logout();
-        } finally {
-          setLoading(false);
+      try {
+        setIsChecking(true);
+        
+        // If user is already authenticated, no need to check
+        if (isAuthenticated && token) {
+          setIsChecking(false);
+          return;
         }
+
+        // If there's a token but user is not authenticated, verify it
+        if (token && !isAuthenticated) {
+          try {
+            setLoading(true);
+            const user = await authService.getCurrentUser();
+            login(token, user);
+          } catch (error) {
+            console.error('Token verification failed:', error);
+            logout();
+          } finally {
+            setLoading(false);
+          }
+        }
+      } finally {
+        setIsChecking(false);
       }
-      
-      setIsChecking(false);
     };
 
     checkAuth();
-  }, [token, isAuthenticated, login, logout, setLoading, isAuthenticating]);
+  }, [token, isAuthenticated, login, logout, setLoading]);
 
   // Show loading while checking authentication or during active authentication
   if (isChecking || isAuthenticating) {
@@ -46,7 +49,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     );
   }
 
-  // If user is authenticated, redirect them away from auth pages to dashboard
+  // If user is authenticated and visits auth pages or root, redirect to dashboard
   if (isAuthenticated && token) {
     const authPaths = ['/login', '/signup', '/mobile-auth', '/mobile-login', '/'];
     if (authPaths.includes(location.pathname)) {
@@ -54,11 +57,11 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     }
   }
 
-  // Only redirect if we're sure the user is not authenticated AND we've completed the auth check
+  // If user is not authenticated, protect only specific routes
   if (!isAuthenticated && !token) {
-    const publicPaths = ['/login', '/signup', '/mobile-auth', '/mobile-login', '/'];
-    if (!publicPaths.includes(location.pathname)) {
-      return <Navigate to="/mobile-auth" replace />;
+    const protectedPaths = ['/dashboard'];
+    if (protectedPaths.includes(location.pathname)) {
+      return <Navigate to="/mobile-auth" replace state={{ from: location }} />;
     }
   }
 
