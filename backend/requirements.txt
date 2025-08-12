@@ -33,7 +33,7 @@ requests==2.31.0
 slowapi==0.1.8
 
 # Image processing  
-Pillow==9.5.0
+Pillow>=10.0.0,<11.0.0
 
 # Core Python dependencies
 typing-extensions==4.7.1
