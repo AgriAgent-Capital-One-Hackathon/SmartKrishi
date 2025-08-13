@@ -139,7 +139,7 @@ export default function LandingPage() {
             <Button 
               size="lg" 
               className="text-lg px-10 py-7 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-2xl hover:shadow-emerald-500/25 transition-all duration-500 transform hover:scale-105 border-0 rounded-2xl"
-              onClick={() => navigate("/mobile-auth")}
+              onClick={() => navigate("/login")}
             >
               Start Your Journey
               <ArrowRight className="ml-3 h-6 w-6" />
@@ -380,11 +380,14 @@ export default function LandingPage() {
           >
             <div className="md:col-span-2">
               <motion.h3 
-                className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent mb-4"
+                className="text-2xl font-bold mb-4 flex items-center"
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.3 }}
               >
-                🌱 SmartKrishi
+                <span className="mr-2">🌱</span>
+                <span className="bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
+                  SmartKrishi
+                </span>
               </motion.h3>
               <motion.p 
                 className="text-gray-300 mb-6 max-w-md leading-relaxed"

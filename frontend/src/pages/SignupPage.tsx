@@ -214,7 +214,7 @@ export default function SignupPage() {
               Or{" "}
               <button
                 type="button"
-                onClick={() => navigate("/mobile-auth")}
+                onClick={() => navigate("/login")}
                 className="text-green-600 hover:text-green-700 font-medium hover:underline"
               >
                 Use Mobile Number Instead
