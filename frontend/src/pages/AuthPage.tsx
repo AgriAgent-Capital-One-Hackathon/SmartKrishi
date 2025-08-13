@@ -1,26 +1,40 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense, lazy, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import PhoneInput from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Smartphone, Mail, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { setupRecaptcha, sendOTPToPhone, getFirebaseIdToken } from '@/lib/firebase';
 import { authService } from '@/services/auth';
 import type { ConfirmationResult } from 'firebase/auth';
+import { isValidPhoneNumber,parsePhoneNumber } from 'react-phone-number-input';
+// Lazy load PhoneInput for better performance
+const PhoneInput = lazy(() => import('react-phone-number-input'));
 
-// Validation schemas
+// Dynamic import for Firebase (only load when needed)
+const loadFirebaseAuth = () => import('@/lib/firebase');
+
+// Update the validation schemas to use a single unified schema
 const mobileSchema = z.object({
-  phone_number: z.string().min(10, 'Phone number is required'),
-  username: z.string().min(2, 'Full name is required').optional(),
+  phone_number: z
+    .string()
+    .refine((value) => isValidPhoneNumber(value || ''), {
+      message: 'Please enter a valid phone number',
+    }),
+  username: z.string().optional(),
 });
 
+// Create a type that includes both required and optional username
+type MobileFormData = {
+  phone_number: string;
+  username?: string;
+};
+
+// Validation schemas
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -40,7 +54,6 @@ const otpSchema = z.object({
   otp: z.string().length(6, 'OTP must be 6 digits'),
 });
 
-type MobileFormData = z.infer<typeof mobileSchema>;
 type EmailFormData = z.infer<typeof emailSchema>;
 type EmailSignupFormData = z.infer<typeof emailSignupSchema>;
 type OTPFormData = z.infer<typeof otpSchema>;
@@ -56,6 +69,10 @@ const UnifiedAuthPage: React.FC = () => {
   const [loginMode, setLoginMode] = useState<LoginMode>('mobile');
   const [authStep, setAuthStep] = useState<AuthStep>('login');
   const [isSignupMode, setIsSignupMode] = useState(false);
+  
+  // Performance optimization state
+  const [backgroundImageLoaded, setBackgroundImageLoaded] = useState(false);
+  const [firebaseLoaded, setFirebaseLoaded] = useState(false);
   
   // Mobile auth state
   const [phoneNumber, setPhoneNumber] = useState<string>('');
@@ -113,6 +130,27 @@ const UnifiedAuthPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
+  // Performance optimization: preload background image and Firebase
+  useEffect(() => {
+    // Preload background image
+    const img = new Image();
+    img.onload = () => setBackgroundImageLoaded(true);
+    img.onerror = () => setBackgroundImageLoaded(true); // Still show page even if image fails
+    img.src = '/farmerbackground.png';
+    
+    // Preload Firebase when mobile mode is likely to be used
+    if (loginMode === 'mobile') {
+      loadFirebaseAuth().then(() => setFirebaseLoaded(true)).catch(() => setFirebaseLoaded(true));
+    }
+  }, [loginMode]);
+
+  // Dynamic CSS loading for PhoneInput
+  useEffect(() => {
+    if (loginMode === 'mobile') {
+      import('react-phone-number-input/style.css');
+    }
+  }, [loginMode]);
+
   // Auto-focus first OTP input
   useEffect(() => {
     if (authStep === 'otp') {
@@ -160,14 +198,37 @@ const UnifiedAuthPage: React.FC = () => {
       }
     }
   };
-
+  
   // Mobile auth handlers
   const handleMobileSubmit = async (data: MobileFormData) => {
+    // Clear any previous errors
+    mobileForm.clearErrors();
+
+    // Manual validation for signup mode
+    if (isSignupMode) {
+      if (!data.username || data.username.trim().length < 2) {
+        mobileForm.setError('username', {
+          type: 'manual',
+          message: 'Full name is required and must be at least 2 characters'
+        });
+        return;
+      }
+    }
+
+    // Manual validation for phone number (additional check)
+    if (!data.phone_number || !isValidPhoneNumber(data.phone_number)) {
+      mobileForm.setError('phone_number', {
+        type: 'manual',
+        message: 'Please enter a valid phone number'
+      });
+      return;
+    }
+
     clearMessages();
     setLoading(true);
-
+    
     try {
-      // Check if user exists
+      // Check if user exists first (faster API call)
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/mobile-init`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,19 +243,20 @@ const UnifiedAuthPage: React.FC = () => {
 
       // Handle existing user in signup mode
       if (isSignupMode && !result.is_new_user) {
-        setError('Phone number already registered. Switch to login mode.');
+        setError('Phone number already registered. Sign in instead.');
         setLoading(false);
         return;
       }
 
       // Handle new user in login mode
       if (!isSignupMode && result.is_new_user) {
-        setError('Account not found. Switch to signup mode.');
+        setError('Account not found. Please sign up first.');
         setLoading(false);
         return;
       }
 
-      // Send OTP
+      // Load Firebase only when needed
+      const { setupRecaptcha, sendOTPToPhone } = await loadFirebaseAuth();
       const verifier = await setupRecaptcha('recaptcha-container', { forceNew: true, size: 'invisible' });
       const confirmation = await sendOTPToPhone(data.phone_number, verifier);
       
@@ -206,6 +268,7 @@ const UnifiedAuthPage: React.FC = () => {
       setSuccessMessage('OTP sent successfully! Check your phone.');
       
     } catch (err) {
+      console.error('Mobile submit error:', err);
       setError(err instanceof Error ? err.message : 'Failed to send OTP');
     } finally {
       setLoading(false);
@@ -222,6 +285,7 @@ const UnifiedAuthPage: React.FC = () => {
       }
 
       const credential = await confirmationResult.confirm(data.otp);
+      const { getFirebaseIdToken } = await loadFirebaseAuth();
       const firebaseToken = await getFirebaseIdToken(credential.user);
 
       const endpoint = isNewUser 
@@ -280,6 +344,7 @@ const UnifiedAuthPage: React.FC = () => {
     setLoading(true);
 
     try {
+      const { setupRecaptcha, sendOTPToPhone } = await loadFirebaseAuth();
       const verifier = await setupRecaptcha('recaptcha-container', { forceNew: true, size: 'invisible' });
       const confirmation = await sendOTPToPhone(phoneNumber, verifier);
       setConfirmationResult(confirmation);
@@ -347,6 +412,12 @@ const UnifiedAuthPage: React.FC = () => {
   const switchMode = (mode: LoginMode) => {
     setLoginMode(mode);
     clearMessages();
+    // Reset form completely
+    if (mode === 'mobile') {
+      mobileForm.reset({ phone_number: '', username: '' });
+      mobileForm.clearErrors();
+      setPhoneNumber('');
+    }
   };
 
   const goBackToLogin = () => {
@@ -358,17 +429,24 @@ const UnifiedAuthPage: React.FC = () => {
     clearMessages();
   };
 
+  // Loading component for PhoneInput
+  const PhoneInputFallback = () => (
+    <div className="bg-white/50 border border-gray-300 rounded-xl py-3 px-4 animate-pulse">
+      <div className="h-6 bg-gray-200 rounded w-48"></div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-green-50 to-teal-100 overflow-hidden relative">
-      {/* Animated background elements */}
+      {/* Optimized animated background elements */}
       <motion.div 
         className="absolute top-20 left-10 w-32 h-32 bg-emerald-300/20 rounded-full blur-3xl"
         animate={{ 
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.6, 0.3],
+          scale: [1, 1.1, 1],
+          opacity: [0.3, 0.5, 0.3],
         }}
         transition={{ 
-          duration: 8,
+          duration: 6,
           repeat: Infinity,
           ease: "easeInOut"
         }}
@@ -376,11 +454,11 @@ const UnifiedAuthPage: React.FC = () => {
       <motion.div 
         className="absolute bottom-20 right-10 w-40 h-40 bg-green-300/20 rounded-full blur-3xl"
         animate={{ 
-          scale: [1, 0.8, 1],
-          opacity: [0.2, 0.5, 0.2],
+          scale: [1, 0.9, 1],
+          opacity: [0.2, 0.4, 0.2],
         }}
         transition={{ 
-          duration: 10,
+          duration: 8,
           repeat: Infinity,
           ease: "easeInOut",
           delay: 2
@@ -396,10 +474,12 @@ const UnifiedAuthPage: React.FC = () => {
           transition={{ duration: 1 }}
         >
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/90 via-green-600/80 to-teal-700/90"></div>
-          <div 
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/farmerbackground.png')" }}
-          />
+          {backgroundImageLoaded && (
+            <div 
+              className="absolute inset-0 bg-cover bg-center transition-opacity duration-500"
+              style={{ backgroundImage: "url('/farmerbackground.png')" }}
+            />
+          )}
           
           {/* Simple Content Container */}
           <div className="relative z-10 flex flex-col justify-center items-center h-full px-16">
@@ -577,21 +657,22 @@ const UnifiedAuthPage: React.FC = () => {
 
                           <div className="space-y-2">
                             <Label className="text-gray-700 font-medium">Mobile Number</Label>
-                            <PhoneInput
-                              placeholder="+91 9876543210"
-                              value={phoneNumber}
-                              onChange={(value) => {
-                                setPhoneNumber(value || '');
-                                mobileForm.setValue('phone_number', value || '');
-                              }}
-                              defaultCountry="IN"
-                              className="bg-white/50 border border-gray-300 rounded-xl focus-within:ring-2 focus-within:ring-emerald-500 transition-all duration-300"
-                            />
+                            <Suspense fallback={<PhoneInputFallback />}>
+                              <PhoneInput
+                                placeholder="9876543210"
+                                value={phoneNumber}
+                                onChange={(value: string | undefined) => {
+                                  setPhoneNumber(value || '');
+                                  mobileForm.setValue('phone_number', value || '');
+                                }}
+                                defaultCountry="IN"
+                                className="bg-white/50 border border-gray-300 rounded-xl focus-within:ring-2 focus-within:ring-emerald-500 transition-all duration-300"
+                              />
+                            </Suspense>
                             {mobileForm.formState.errors.phone_number && (
                               <p className="text-red-500 text-xs">{mobileForm.formState.errors.phone_number.message}</p>
                             )}
                           </div>
-
                           <Button
                             type="submit"
                             disabled={isLoading}

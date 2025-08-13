@@ -21,14 +21,6 @@ const validateConfig = () => {
   }
 };
 
-// Debug configuration
-console.log('Firebase Config:', {
-  apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING',
-  authDomain: firebaseConfig.authDomain || 'MISSING',
-  projectId: firebaseConfig.projectId || 'MISSING',
-  // Don't log full keys for security
-});
-
 // Initialize Firebase
 let app: any = null;
 let auth: any = null;

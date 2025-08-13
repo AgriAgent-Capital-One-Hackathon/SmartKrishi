@@ -320,7 +320,7 @@ export default function LandingPage() {
             <Button 
               size="lg" 
               className="text-lg px-12 py-7 bg-white text-emerald-600 hover:bg-gray-100 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 rounded-2xl font-semibold"
-              onClick={() => navigate("/mobile-auth")}
+              onClick={() => navigate("/auth")}
             >
               Get Started Today
               <ArrowRight className="ml-3 h-6 w-6" />

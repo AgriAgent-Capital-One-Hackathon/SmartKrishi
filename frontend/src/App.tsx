@@ -2,10 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from "@/components/theme-provider"
 import ProtectedRoute from "@/components/ProtectedRoutes"
 import LandingPage from "@/pages/LandingPage"
-import LoginPage from "@/pages/NewLoginPage"
-import SignupPage from "@/pages/SignupPage"
-import MobileAuthPage from "@/pages/MobileAuthPage"
-import MobileLoginPage from "@/pages/MobileLoginPage"
+import UnifiedAuthPage from "@/pages/AuthPage"
 import DashboardPage from "@/pages/DashboardPage"
 import { useAuthInit } from "@/hooks/useAuthInit"
 import { useEffect, useState } from "react"
@@ -45,10 +42,8 @@ function App() {
               </ProtectedRoute>
             } 
           />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/mobile-auth" element={<MobileAuthPage />} />
-          <Route path="/mobile-login" element={<MobileLoginPage />} />
+          <Route path="/auth" element={<UnifiedAuthPage />} />
+          <Route path="/login" element={<UnifiedAuthPage />} /> {/* Redirect for compatibility */}
           <Route 
             path="/dashboard" 
             element={

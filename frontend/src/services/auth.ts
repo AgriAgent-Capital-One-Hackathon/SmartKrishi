@@ -46,7 +46,7 @@ api.interceptors.response.use(
         console.warn('Could not call logout on store', e);
       }
 
-      window.location.href = '/mobile-auth';
+      window.location.href = '/auth';
     }
     return Promise.reject(error);
   }

@@ -138,7 +138,7 @@ export default function LandingPage() {
             <Button 
               size="lg" 
               className="text-lg px-10 py-7 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-2xl hover:shadow-emerald-500/25 transition-all duration-500 transform hover:scale-105 border-0 rounded-2xl"
-              onClick={() => navigate("/mobile-auth")}
+              onClick={() => navigate("/auth")}
             >
               Start Your Journey
               <ArrowRight className="ml-3 h-6 w-6" />
@@ -309,7 +309,7 @@ export default function LandingPage() {
             <Button 
               size="lg" 
               className="text-lg px-12 py-7 bg-white text-emerald-600 hover:bg-gray-100 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 rounded-2xl font-semibold"
-              onClick={() => navigate("/mobile-auth")}
+              onClick={() => navigate("/auth")}
             >
               Get Started Today
               <ArrowRight className="ml-3 h-6 w-6" />

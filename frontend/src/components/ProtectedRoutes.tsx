@@ -51,7 +51,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
   // If user is authenticated and visits auth pages or root, redirect to dashboard
   if (isAuthenticated && token) {
-    const authPaths = ['/login', '/signup', '/mobile-auth', '/mobile-login', '/'];
+    const authPaths = ['/auth', '/login', '/'];
     if (authPaths.includes(location.pathname)) {
       return <Navigate to="/dashboard" replace />;
     }
@@ -61,7 +61,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   if (!isAuthenticated && !token) {
     const protectedPaths = ['/dashboard'];
     if (protectedPaths.includes(location.pathname)) {
-      return <Navigate to="/mobile-auth" replace state={{ from: location }} />;
+      return <Navigate to="/auth" replace state={{ from: location }} />;
     }
   }
 
