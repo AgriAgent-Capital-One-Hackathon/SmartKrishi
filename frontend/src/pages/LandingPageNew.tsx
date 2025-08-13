@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
-import { ArrowRight, Bot, Cloud, Eye, TrendingUp, ChevronDown, Github, Mail, Sparkles, Zap, Target } from "lucide-react"
-// Add these imports for brand icons
-import { FaTwitter, FaLinkedin, FaInstagram, FaGithub } from "react-icons/fa"
+import { ArrowRight, Bot, Cloud, Eye, TrendingUp, ChevronDown, Github, Twitter, Linkedin, Mail, Sparkles, Zap, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -26,6 +24,7 @@ export default function LandingPage() {
   }, [])
 
   useEffect(() => {
+    // Add smooth scrolling CSS
     document.documentElement.style.scrollBehavior = 'smooth'
     return () => {
       document.documentElement.style.scrollBehavior = 'auto'
@@ -92,7 +91,7 @@ export default function LandingPage() {
     : {}
 
   return (
-    <div className="w-full bg-white overflow-x-hidden">
+    <div className="min-h-screen bg-white overflow-x-hidden">
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Fixed Background */}
@@ -117,7 +116,7 @@ export default function LandingPage() {
             </span>
             <br />
             <span className="text-4xl sm:text-5xl lg:text-6xl font-medium">
-              AI-Powered Agricultural Advisor
+              AI-Powered Agricultural Intelligence
             </span>
           </motion.h1>
           
@@ -196,7 +195,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
           >
             <h2 className="text-5xl sm:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent mb-6">
-              Smart Solutions for Modern Farming
+              Intelligent Farming Tools
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
               Harness the power of artificial intelligence to optimize every aspect of your agricultural operations.
@@ -260,42 +259,32 @@ export default function LandingPage() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 relative">
+            {/* Connection Lines for Desktop */}
+            <div className="hidden lg:block absolute top-24 left-1/3 w-1/3 h-1 bg-gradient-to-r from-emerald-200 via-green-300 to-emerald-400 rounded-full"></div>
+            <div className="hidden lg:block absolute top-24 right-1/3 w-1/3 h-1 bg-gradient-to-r from-emerald-300 via-green-400 to-emerald-500 rounded-full"></div>
+
             {howItWorksSteps.map((step, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 60 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: index * 0.2 }}
+                transition={{ duration: 0.7, delay: index * 0.3 }}
                 viewport={{ once: true }}
-                whileHover={{ 
-                  scale: 1.05,
-                  y: -10,
-                  transition: { duration: 0.3 }
-                }}
+                className="text-center relative"
               >
-                <Card className="h-full border-0 shadow-xl hover:shadow-2xl transition-all duration-500 bg-gradient-to-br from-white via-emerald-50/30 to-green-50/50 backdrop-blur-sm group">
-                  <CardHeader className="pb-6 text-center">
-                    <div className="relative mb-6">
-                      <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg group-hover:shadow-emerald-500/30 transition-all duration-500">
-                        <div className="text-white transform group-hover:scale-110 transition-transform duration-300">
-                          {step.icon}
-                        </div>
-                      </div>
-                      <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
-                        {step.step}
-                      </div>
+                <div className="relative mb-8">
+                  <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-green-600 rounded-3xl flex items-center justify-center mx-auto shadow-2xl">
+                    <div className="text-white">
+                      {step.icon}
                     </div>
-                    <CardTitle className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-emerald-700 transition-colors duration-300">
-                      {step.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-center pb-8">
-                    <CardDescription className="text-gray-700 leading-relaxed text-lg">
-                      {step.description}
-                    </CardDescription>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="absolute -top-3 -right-3 w-10 h-10 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                    {step.step}
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">{step.title}</h3>
+                <p className="text-gray-700 leading-relaxed text-lg">{step.description}</p>
               </motion.div>
             ))}
           </div>
@@ -329,176 +318,75 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Enhanced Dynamic Footer */}
-      <footer className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-12 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Animated background elements */}
-        <motion.div 
-          className="absolute top-10 left-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl"
-          animate={{ 
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.6, 0.3],
-          }}
-          transition={{ 
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        <motion.div 
-          className="absolute bottom-10 right-10 w-40 h-40 bg-green-500/10 rounded-full blur-3xl"
-          animate={{ 
-            scale: [1, 0.8, 1],
-            opacity: [0.2, 0.5, 0.2],
-          }}
-          transition={{ 
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2
-          }}
-        />
-        <motion.div 
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-teal-500/5 rounded-full blur-3xl"
-          animate={{ 
-            rotate: [0, 360],
-            scale: [1, 1.1, 1],
-          }}
-          transition={{ 
-            duration: 20,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-        />
-        
-        <div className="relative z-10 max-w-6xl mx-auto">
-          <motion.div 
-            className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8"
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-          >
+      {/* Footer */}
+      <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
             <div className="md:col-span-2">
-              <motion.h3 
-                className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent mb-4"
-                whileHover={{ scale: 1.05 }}
-                transition={{ duration: 0.3 }}
-              >
+              <h3 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent mb-6">
                 🌱 SmartKrishi
-              </motion.h3>
-              <motion.p 
-                className="text-gray-300 mb-6 max-w-md leading-relaxed"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                transition={{ duration: 1, delay: 0.2 }}
-                viewport={{ once: true }}
-              >
+              </h3>
+              <p className="text-gray-300 mb-8 max-w-md leading-relaxed text-lg">
                 Pioneering the future of agriculture through artificial intelligence. 
                 Empowering farmers with data-driven insights for sustainable farming.
-              </motion.p>
-              <div className="flex space-x-4">
-                <motion.div whileHover={{ scale: 1.1, y: -2 }} whileTap={{ scale: 0.95 }}>
-                  <Button variant="outline" size="sm" className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:border-gray-400 transition-all duration-300">
-                    <FaGithub className="w-4 h-4" />
-                  </Button>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.1, y: -2 }} whileTap={{ scale: 0.95 }}>
-                  <Button variant="outline" size="sm" className="border-gray-600 text-gray-300 hover:bg-blue-500/20 hover:border-blue-400 hover:text-blue-400 transition-all duration-300">
-                    <FaTwitter className="w-4 h-4" />
-                  </Button>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.1, y: -2 }} whileTap={{ scale: 0.95 }}>
-                  <Button variant="outline" size="sm" className="border-gray-600 text-gray-300 hover:bg-blue-600/20 hover:border-blue-500 hover:text-blue-500 transition-all duration-300">
-                    <FaLinkedin className="w-4 h-4" />
-                  </Button>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.1, y: -2 }} whileTap={{ scale: 0.95 }}>
-                  <Button variant="outline" size="sm" className="border-gray-600 text-gray-300 hover:bg-gradient-to-r hover:from-pink-500/20 hover:to-purple-500/20 hover:border-pink-400 hover:text-pink-400 transition-all duration-300">
-                    <FaInstagram className="w-4 h-4" />
-                  </Button>
-                </motion.div>
+              </p>
+              <div className="flex space-x-6">
+                <Button variant="outline" size="sm" className="border-gray-600 text-gray-300 hover:bg-white/10 hover:border-emerald-400 transition-all duration-300">
+                  <Github className="w-5 h-5" />
+                </Button>
+                <Button variant="outline" size="sm" className="border-gray-600 text-gray-300 hover:bg-white/10 hover:border-emerald-400 transition-all duration-300">
+                  <Twitter className="w-5 h-5" />
+                </Button>
+                <Button variant="outline" size="sm" className="border-gray-600 text-gray-300 hover:bg-white/10 hover:border-emerald-400 transition-all duration-300">
+                  <Linkedin className="w-5 h-5" />
+                </Button>
               </div>
             </div>
             
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              viewport={{ once: true }}
-            >
-              <h4 className="text-lg font-semibold text-white mb-4">Quick Links</h4>
-              <ul className="space-y-2">
-                {["About", "Features", "Contact", "Support", "Privacy"].map((link, index) => (
-                  <motion.li 
-                    key={link}
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 0.1 * index }}
-                    viewport={{ once: true }}
-                    whileHover={{ x: 5 }}
-                  >
-                    <a href="#" className="text-gray-300 hover:text-emerald-400 transition-colors">
+            <div>
+              <h4 className="text-xl font-semibold text-white mb-6">Quick Links</h4>
+              <ul className="space-y-4">
+                {["About", "Features", "Pricing", "Contact", "Support", "Privacy"].map((link) => (
+                  <li key={link}>
+                    <a href="#" className="text-gray-300 hover:text-emerald-400 transition-colors text-lg">
                       {link}
                     </a>
-                  </motion.li>
+                  </li>
                 ))}
               </ul>
-            </motion.div>
+            </div>
             
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              viewport={{ once: true }}
-            >
-              <h4 className="text-lg font-semibold text-white mb-4">Stay Connected</h4>
-              <p className="text-gray-300 text-sm mb-4">
-                Get the latest updates and farming insights.
+            <div>
+              <h4 className="text-xl font-semibold text-white mb-6">Stay Connected</h4>
+              <p className="text-gray-300 text-sm mb-6">
+                Get the latest updates and farming insights delivered to your inbox.
               </p>
-              <div className="space-y-3">
-                <motion.div whileHover={{ scale: 1.02 }} whileFocus={{ scale: 1.02 }}>
-                  <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 rounded-xl backdrop-blur-sm text-sm"
-                  />
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-                  <Button className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-xl shadow-lg hover:shadow-emerald-500/25 transition-all duration-300 text-sm py-2">
-                    <Mail className="w-4 h-4 mr-2" />
-                    Subscribe
-                  </Button>
-                </motion.div>
-                <motion.div 
-                  className="text-center"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <span className="inline-block px-3 py-1 bg-gray-800/50 text-gray-300 rounded-lg border border-gray-600 backdrop-blur-sm text-xs">
-                    🌍 English | हिंदी (Soon)
+              <div className="space-y-4">
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 rounded-xl"
+                />
+                <Button className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-xl">
+                  <Mail className="w-4 h-4 mr-2" />
+                  Subscribe
+                </Button>
+                <div className="text-center">
+                  <span className="inline-block px-4 py-2 bg-gray-800 text-gray-300 rounded-xl border border-gray-600">
+                    🌍 English | हिंदी (Coming Soon)
                   </span>
-                </motion.div>
+                </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
           
-          <motion.div 
-            className="border-t border-gray-700/50 pt-6 text-center"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            viewport={{ once: true }}
-          >
-            <motion.p 
-              className="text-gray-400"
-              whileHover={{ scale: 1.02 }}
-              transition={{ duration: 0.3 }}
-            >
+          <div className="border-t border-gray-700 pt-8 text-center">
+            <p className="text-gray-400 text-lg">
               © 2025 SmartKrishi. Cultivating the future of farming with AI.
-            </motion.p>
-          </motion.div>
+            </p>
+          </div>
         </div>
       </footer>
     </div>
