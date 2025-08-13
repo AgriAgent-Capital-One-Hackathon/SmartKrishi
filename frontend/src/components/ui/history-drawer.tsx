@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { X, Search, Plus, MoreVertical, Edit2, Trash2 } from "lucide-react"
 import { chatService, type ChatSummary } from "@/services/chatService"
 
@@ -24,12 +24,28 @@ export default function HistoryDrawer({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Load chat history when drawer opens
+  // Map of refs for each chat menu
+  const menuRefs = useRef<Record<string, HTMLDivElement | null>>({})
+
   useEffect(() => {
     if (isOpen) {
       loadChatHistory()
+    } else {
+      setOpenMenuId(null)
     }
   }, [isOpen])
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!openMenuId) return
+      const menuEl = menuRefs.current[openMenuId]
+      if (menuEl && !menuEl.contains(e.target as Node)) {
+        setOpenMenuId(null)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [openMenuId])
 
   const loadChatHistory = async () => {
     try {
@@ -37,7 +53,7 @@ export default function HistoryDrawer({
       const chats = await chatService.getUserChats()
       setChatHistory(chats)
     } catch (error) {
-      console.error('Failed to load chat history:', error)
+      console.error("Failed to load chat history:", error)
     } finally {
       setLoading(false)
     }
@@ -58,13 +74,13 @@ export default function HistoryDrawer({
     if (editingId && editingName.trim()) {
       try {
         await chatService.updateChat(editingId, editingName.trim())
-        setChatHistory(prev => 
-          prev.map(chat => 
+        setChatHistory(prev =>
+          prev.map(chat =>
             chat.id === editingId ? { ...chat, title: editingName.trim() } : chat
           )
         )
       } catch (error) {
-        console.error('Failed to rename chat:', error)
+        console.error("Failed to rename chat:", error)
       }
     }
     setEditingId(null)
@@ -77,7 +93,7 @@ export default function HistoryDrawer({
       setChatHistory(prev => prev.filter(chat => chat.id !== chatId))
       setOpenMenuId(null)
     } catch (error) {
-      console.error('Failed to delete chat:', error)
+      console.error("Failed to delete chat:", error)
     }
   }
 
@@ -96,8 +112,7 @@ export default function HistoryDrawer({
       onChatSelect(newChat.id)
       onClose()
     } catch (error) {
-      console.error('Failed to create new chat:', error)
-      // Fallback to existing new chat functionality
+      console.error("Failed to create new chat:", error)
       onNewChat()
       onClose()
     }
@@ -107,9 +122,8 @@ export default function HistoryDrawer({
     const date = new Date(dateString)
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-    
-    if (diffDays === 0) return 'Today'
-    if (diffDays === 1) return 'Yesterday'
+    if (diffDays === 0) return "Today"
+    if (diffDays === 1) return "Yesterday"
     if (diffDays < 7) return `${diffDays} days ago`
     return date.toLocaleDateString()
   }
@@ -119,147 +133,156 @@ export default function HistoryDrawer({
   return (
     <>
       {/* Overlay */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
-        onClick={onClose}
+      <div
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+        onClick={() => {
+          setOpenMenuId(null)
+          onClose()
+        }}
       />
-      
+
       {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-xl z-50 flex flex-col">
+      <div className="fixed right-0 top-0 h-full w-80 bg-white/70 backdrop-blur-lg border-l border-white/20 shadow-xl z-50 flex flex-col rounded-l-xl overflow-hidden">
+        
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-white/20 bg-gradient-to-r from-emerald-500/10 to-teal-400/10">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Chat History</h2>
+            <h2 className="text-lg font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              Chat History
+            </h2>
             <button
-              onClick={onClose}
-              className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+              onClick={() => {
+                setOpenMenuId(null)
+                onClose()
+              }}
+              className="p-1 rounded-lg hover:bg-white/40 text-gray-600 hover:text-gray-900 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-          
+
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600" />
             <input
               type="text"
               placeholder="Search chats..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+              className="w-full pl-10 pr-4 py-2 rounded-full bg-white/60 border border-white/30 focus:ring-2 focus:ring-emerald-400 text-sm placeholder-gray-500"
             />
           </div>
         </div>
-        
+
         {/* New Chat Button */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-white/20">
           <button
             onClick={handleCreateNewChat}
-            className="w-full flex items-center justify-center space-x-2 p-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200"
+            className="w-full flex items-center justify-center space-x-2 p-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md hover:shadow-lg transition-all duration-300"
           >
             <Plus className="w-4 h-4" />
             <span>New Chat</span>
           </button>
         </div>
-        
+
         {/* Chat List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-2">
           {loading ? (
-            <div className="p-4 text-center text-gray-500">
-              Loading chats...
-            </div>
+            <div className="p-4 text-center text-gray-500">Loading chats...</div>
           ) : filteredHistory.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
               {searchQuery ? "No chats found" : "No chat history yet"}
             </div>
           ) : (
-            <div className="p-2">
-              {filteredHistory.map((chat) => (
-                <div
-                  key={chat.id}
-                  className={`relative group mb-2 p-3 rounded-lg cursor-pointer border transition-colors duration-200 ${
-                    currentChatId === chat.id 
-                      ? 'bg-green-50 border-green-200' 
-                      : 'hover:bg-gray-50 border-transparent hover:border-gray-200'
-                  }`}
-                  onClick={() => {
-                    onChatSelect(chat.id)
-                    onClose()
-                  }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      {editingId === chat.id ? (
-                        <input
-                          type="text"
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          onBlur={handleSaveRename}
-                          onKeyPress={(e) => e.key === 'Enter' && handleSaveRename()}
-                          className="w-full text-sm font-medium text-gray-900 bg-white border border-green-500 rounded px-2 py-1"
-                          autoFocus
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      ) : (
-                        <h3 className="text-sm font-medium text-gray-900 truncate">
-                          {chat.title}
-                        </h3>
-                      )}
-                      <p className="text-xs text-gray-500 truncate mt-1">
-                        {chat.last_message || "No messages yet"}
+            filteredHistory.map((chat) => (
+              <div
+                key={chat.id}
+                className={`relative group mb-2 p-3 rounded-lg cursor-pointer border transition-all duration-300 ${
+                  currentChatId === chat.id
+                    ? "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200"
+                    : "bg-white/50 hover:bg-white/70 border-transparent hover:border-white/30"
+                }`}
+                onClick={() => {
+                  onChatSelect(chat.id)
+                  onClose()
+                }}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    {editingId === chat.id ? (
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={handleSaveRename}
+                        onKeyDown={(e) => e.key === "Enter" && handleSaveRename()}
+                        className="w-full text-sm font-medium text-gray-900 bg-white border border-emerald-500 rounded px-2 py-1"
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <h3 className="text-sm font-medium text-gray-900 truncate">
+                        {chat.title}
+                      </h3>
+                    )}
+                    <p className="text-xs text-gray-500 truncate mt-1">
+                      {chat.last_message || "No messages yet"}
+                    </p>
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-xs text-gray-400">
+                        {formatDate(chat.updated_at)}
                       </p>
-                      <div className="flex items-center justify-between mt-1">
-                        <p className="text-xs text-gray-400">
-                          {formatDate(chat.updated_at)}
-                        </p>
-                        {chat.message_count > 0 && (
-                          <span className="text-xs text-gray-400">
-                            {chat.message_count} messages
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setOpenMenuId(openMenuId === chat.id ? null : chat.id)
-                        }}
-                        className="p-1 rounded hover:bg-gray-200 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <MoreVertical className="w-4 h-4 text-gray-500" />
-                      </button>
-                      
-                      {openMenuId === chat.id && (
-                        <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleRename(chat)
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                            <span>Rename</span>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDelete(chat.id)
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 flex items-center space-x-2"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            <span>Delete</span>
-                          </button>
-                        </div>
+                      {chat.message_count > 0 && (
+                        <span className="text-xs text-gray-400">
+                          {chat.message_count} messages
+                        </span>
                       )}
                     </div>
                   </div>
+
+                  {/* Menu */}
+                  <div
+                    className="relative"
+                    ref={(el) => { menuRefs.current[chat.id] = el }}
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenMenuId(openMenuId === chat.id ? null : chat.id)
+                      }}
+                      className="p-1 rounded hover:bg-white/50 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <MoreVertical className="w-4 h-4 text-gray-500" />
+                    </button>
+
+                    {openMenuId === chat.id && (
+                      <div className="absolute right-0 top-8 bg-white/80 backdrop-blur-md border border-white/30 rounded-lg shadow-lg py-1 z-10 w-36">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRename(chat)
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-emerald-50 flex items-center space-x-2 transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          <span>Rename</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(chat.id)
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))
           )}
         </div>
       </div>

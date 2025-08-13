@@ -1,6 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
+// Create a conditional logger
+const isDev = import.meta.env.DEV;
+const logger = {
+  log: (...args: any[]) => isDev && console.log(...args),
+  error: (...args: any[]) => isDev && console.error(...args),
+  warn: (...args: any[]) => isDev && console.warn(...args),
+};
+
 // Firebase configuration - using environment variables
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -30,15 +38,9 @@ try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   
-  // For development, you might want to use auth emulator
-  // Uncomment the following lines if you're using Firebase Auth emulator
-  // if (import.meta.env.DEV) {
-  //   connectAuthEmulator(auth, 'http://localhost:9099');
-  // }
-  
-  console.log('Firebase initialized successfully');
+  logger.log('Firebase initialized successfully');
 } catch (error) {
-  console.error('Firebase initialization failed:', error);
+  logger.error('Firebase initialization failed:', error);
   throw error;
 }
 
@@ -52,16 +54,16 @@ export const setupRecaptcha = (
 ): Promise<RecaptchaVerifier> => {
   return new Promise(async (resolve, reject) => {
     if (!auth) {
-      console.error('Firebase auth not initialized');
+      logger.error('Firebase auth not initialized');
       reject(new Error('Firebase auth not initialized'));
       return;
     }
-    
+
     const { forceNew = false, size = 'invisible' } = options;
     
     // If forceNew is false and verifier already exists, return it
     if (!forceNew && globalRecaptchaVerifier) {
-      console.log('Reusing existing reCAPTCHA verifier');
+      logger.log('Reusing existing reCAPTCHA verifier');
       resolve(globalRecaptchaVerifier);
       return;
     }
@@ -70,10 +72,10 @@ export const setupRecaptcha = (
       // Clear existing verifier if forceNew is true
       if (forceNew && globalRecaptchaVerifier) {
         try {
-          console.log('Clearing existing reCAPTCHA verifier');
+          logger.log('Clearing existing reCAPTCHA verifier');
           globalRecaptchaVerifier.clear();
         } catch (clearError) {
-          console.warn('Error clearing existing verifier:', clearError);
+          logger.warn('Error clearing existing verifier:', clearError);
         }
         globalRecaptchaVerifier = null;
       }
@@ -90,26 +92,27 @@ export const setupRecaptcha = (
       const verifier = new RecaptchaVerifier(auth, containerId, {
         size,
         callback: (response: any) => {
-          console.log('reCAPTCHA solved', response);
+          logger.log('reCAPTCHA solved');
+          // Remove the actual token from logs
         },
         'expired-callback': () => {
-          console.log('reCAPTCHA expired, clearing verifier');
+          logger.log('reCAPTCHA expired, clearing verifier');
           globalRecaptchaVerifier = null;
         },
         'error-callback': (error: any) => {
-          console.error('reCAPTCHA error:', error);
+          logger.error('reCAPTCHA error:', error);
           globalRecaptchaVerifier = null;
         }
       });
 
       // Render the verifier
       await verifier.render();
-      console.log('reCAPTCHA rendered successfully');
+      logger.log('reCAPTCHA rendered successfully');
       globalRecaptchaVerifier = verifier;
       resolve(verifier);
 
     } catch (error) {
-      console.error('Failed to setup reCAPTCHA:', error);
+      logger.error('Failed to setup reCAPTCHA:', error);
       
       // Handle specific reCAPTCHA errors
       if (error instanceof Error) {
@@ -133,24 +136,25 @@ export const clearRecaptchaVerifier = () => {
     try {
       globalRecaptchaVerifier.clear();
     } catch (error) {
-      console.warn('Error clearing reCAPTCHA verifier:', error);
+      logger.warn('Error clearing reCAPTCHA verifier:', error);
     }
     globalRecaptchaVerifier = null;
-    console.log('reCAPTCHA verifier cleared');
+    logger.log('reCAPTCHA verifier cleared');
   }
 };
 
 // Function to get reCAPTCHA verifier (creates new if none exists)
 export const getRecaptchaVerifier = async (containerId: string = 'recaptcha-container'): Promise<RecaptchaVerifier> => {
   if (globalRecaptchaVerifier) {
-    console.log('Returning existing reCAPTCHA verifier');
+    logger.log('Returning existing reCAPTCHA verifier');
     return globalRecaptchaVerifier;
   }
   
-  console.log('No reCAPTCHA verifier found, creating new one...');
+  logger.log('No reCAPTCHA verifier found, creating new one...');
   return await setupRecaptcha(containerId, { forceNew: true, size: 'invisible' });
 };
 
+// Phone number utilities
 export const sendOTPToPhone = async (phoneNumber: string, recaptchaVerifier: RecaptchaVerifier) => {
   if (!auth) {
     throw new Error('Firebase auth not initialized');
@@ -161,17 +165,14 @@ export const sendOTPToPhone = async (phoneNumber: string, recaptchaVerifier: Rec
   }
   
   try {
-    console.log('Attempting to send OTP to:', phoneNumber);
-    console.log('Using reCAPTCHA verifier:', recaptchaVerifier);
+    logger.log('Attempting to send OTP to:', phoneNumber.replace(/\d(?=\d{4})/g, '*')); // Mask phone number
+    logger.log('Using reCAPTCHA verifier: [verifier object]'); // Don't log actual verifier
     
     const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
-    console.log('OTP sent successfully');
+    logger.log('OTP sent successfully');
     return confirmationResult;
   } catch (error: any) {
-    console.error('Error sending OTP:', error);
-    
-    // Don't automatically clear the reCAPTCHA - let the caller handle it
-    // This allows the verifier to be reused for retries
+    logger.error('Error sending OTP:', error.code || error.message);
     
     // Handle specific Firebase Auth errors
     if (error.code) {
@@ -206,36 +207,20 @@ export const sendOTPToPhone = async (phoneNumber: string, recaptchaVerifier: Rec
   }
 };
 
-// Helper function to get Firebase ID token with retry logic
-export const getFirebaseIdToken = async (user: any, maxRetries: number = 3): Promise<string> => {
-  let lastError: any;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`Getting Firebase ID token (attempt ${attempt}/${maxRetries})`);
-      
-      // Add a small delay before getting token to ensure it's valid
-      if (attempt > 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-      }
-      
-      const token = await user.getIdToken(true); // Force refresh
-      console.log('Firebase ID token obtained successfully');
-      return token;
-    } catch (error: any) {
-      console.error(`Attempt ${attempt} failed:`, error);
-      lastError = error;
-      
-      if (attempt === maxRetries) {
-        break;
-      }
-      
-      // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, 500 * attempt));
-    }
+// Get Firebase ID token from user
+export const getFirebaseIdToken = async (user: any) => {
+  if (!user) {
+    throw new Error('No user provided');
   }
   
-  throw new Error(`Failed to get Firebase ID token after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`);
+  try {
+    const token = await user.getIdToken();
+    logger.log('Firebase ID token retrieved successfully');
+    return token;
+  } catch (error) {
+    logger.error('Error getting Firebase ID token:', error);
+    throw new Error('Failed to get authentication token');
+  }
 };
 
 export { auth };

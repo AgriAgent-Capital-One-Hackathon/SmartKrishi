@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
 import ChatInput from "@/components/ui/chat-input"
 import Message from "@/components/ui/message"
 import Navbar from "@/components/ui/navbar"
@@ -19,10 +18,10 @@ import { authService } from "@/services/auth"
 import { chatService, type ChatMessage } from '../services/chatService';
 
 interface SuggestionCard {
-  id: string
-  icon: React.ReactNode
-  text: string
-  prompt: string
+  id: string;
+  icon: React.ReactNode;
+  text: string;
+  prompt: string;
 }
 
 const getIconForSuggestion = (id: string) => {
@@ -32,66 +31,65 @@ const getIconForSuggestion = (id: string) => {
     case 'soil-health':
       return <Leaf className="w-6 h-6 text-green-600" />;
     case 'weather-advice':
-      return <Sun className="w-6 h-6 text-yellow-500" />;
-    case 'pest-management':
+      return <Sun className="w-6 h-6 text-green-600" />;
     case 'pest-control':
-      return <Bug className="w-6 h-6 text-red-500" />;
+      return <Bug className="w-6 h-6 text-green-600" />;
     case 'market-prices':
-    case 'market-insights':
       return <DollarSign className="w-6 h-6 text-green-600" />;
     default:
-      return <Sparkles className="w-6 h-6 text-blue-500" />;
+      return <Sparkles className="w-6 h-6 text-green-600" />;
   }
 };
 
 export default function DashboardPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(true);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [suggestionCards, setSuggestionCards] = useState<SuggestionCard[]>([]);
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
+  const [message, setMessage] = useState('')
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(true)
+  const [suggestions, setSuggestions] = useState<SuggestionCard[]>([])
 
-  // Load suggestions from API
   useEffect(() => {
     const loadSuggestions = async () => {
-      try {
-        const suggestions = await chatService.getSuggestions();
-        setSuggestionCards(suggestions.map(s => ({
-          id: s.id,
-          icon: getIconForSuggestion(s.id),
-          text: s.text,
-          prompt: s.prompt
-        })));
-      } catch (error) {
-        console.error('Failed to load suggestions:', error);
-        // Fallback suggestions
-        setSuggestionCards([
+      if (messages.length === 0) {
+        setSuggestions([
           {
-            id: "crop-care",
-            icon: <Leaf className="w-6 h-6 text-green-600" />,
-            text: "Crop Care Tips",
-            prompt: "What are the best practices for caring for my crops during this season?"
+            id: 'crop-care',
+            icon: getIconForSuggestion('crop-care'),
+            text: "Crop Care",
+            prompt: "How can I improve the health and yield of my crops?"
           },
           {
-            id: "weather-advice",
-            icon: <Sun className="w-6 h-6 text-yellow-500" />,
-            text: "Weather Insights",
-            prompt: "How will the current weather conditions affect my farming activities?"
-          },
-          {
-            id: "pest-management",
-            icon: <Bug className="w-6 h-6 text-red-500" />,
+            id: 'pest-control',
+            icon: getIconForSuggestion('pest-control'),
             text: "Pest Control",
-            prompt: "Help me identify and manage pests affecting my crops."
+            prompt: "What are effective organic pest control methods for my crops?"
           },
           {
-            id: "market-prices",
-            icon: <DollarSign className="w-6 h-6 text-green-600" />,
+            id: 'soil-health',
+            icon: getIconForSuggestion('soil-health'),
+            text: "Soil Health",
+            prompt: "How can I test and improve my soil quality naturally?"
+          },
+          {
+            id: 'weather-advice',
+            icon: getIconForSuggestion('weather-advice'),
+            text: "Weather Insights",
+            prompt: "How should I prepare my crops for upcoming weather changes?"
+          },
+          {
+            id: 'crop-diseases',
+            icon: getIconForSuggestion('crop-diseases'),
+            text: "Disease Prevention",
+            prompt: "How can I identify and prevent common crop diseases?"
+          },
+          {
+            id: 'market-prices',
+            icon: getIconForSuggestion('market-prices'),
             text: "Market Prices",
             prompt: "What are the current market prices for my crops and when should I sell?"
           }
@@ -212,7 +210,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-screen flex bg-gray-50">
+    <div className="h-screen flex bg-gradient-to-br from-gray-50 via-white to-gray-100 overflow-hidden">
       {/* Navbar */}
       <Navbar 
         onNewChat={handleNewChat}
@@ -221,94 +219,138 @@ export default function DashboardPage() {
       />
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col relative">
         {/* Welcome Message or Chat Messages */}
         {showSuggestions ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8">
-            <div className="text-center max-w-2xl mb-8">
-              <div className="mb-4">
-                <span className="text-6xl">🌱</span>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto">
+            {/* Welcome Section */}
+            <div className="text-center mb-12 animate-fade-in">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 mx-auto bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-all duration-300 ease-in-out">
+                  <Sparkles className="w-10 h-10 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-400 rounded-full animate-pulse"></div>
               </div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">
+              <h1 className="text-5xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-4">
                 Welcome to SmartKrishi
               </h1>
-              <p className="text-lg text-gray-600">
-                Your AI-powered farming assistant. Ask me anything about agriculture, crops, or farming techniques.
+              <p className="text-xl text-gray-600 font-medium max-w-2xl mx-auto leading-relaxed">
+                Your AI-powered farming assistant is here to help you grow better crops, make informed decisions, and boost your agricultural success.
               </p>
             </div>
 
             {/* Suggestion Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl">
-              {suggestionCards.map((card) => (
-                <Card 
-                  key={card.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow border-green-100 hover:border-green-200"
-                  onClick={() => handleSuggestionClick(card.prompt)}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
-                        {card.icon}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-800 mb-1">
-                          {card.text}
-                        </h3>
-                        <p className="text-sm text-gray-600 line-clamp-2">
-                          {card.prompt}
-                        </p>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col">
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="max-w-4xl mx-auto space-y-6">
-                {messages.map((msg) => (
-                  <Message 
-                    key={msg.id} 
-                    role={msg.role}
-                    content={msg.content}
-                    timestamp={msg.timestamp}
-                  />
-                ))}
-                
-                {/* Loading indicator */}
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-white rounded-2xl shadow-sm border px-6 py-4 max-w-2xl">
-                      <div className="flex items-center space-x-2">
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-full max-w-4xl">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-8 text-center">
+                What can I help you with today?
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {suggestions.map((card, index) => (
+                  <div
+                    key={card.id}
+                    className="group cursor-pointer animate-slide-up"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                    onClick={() => handleSuggestionClick(card.prompt)}
+                  >
+                    <div className="h-full bg-white/60 backdrop-blur-lg border border-white/20 rounded-xl p-6 shadow-lg hover:shadow-xl hover:scale-105 hover:bg-white/70 transition-all duration-300 ease-in-out">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-md group-hover:shadow-lg transition-shadow duration-300">
+                            {card.icon}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900 text-lg group-hover:text-green-700 transition-colors duration-300">
+                              {card.text}
+                            </h3>
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                              {card.prompt}
+                            </p>
+                          </div>
                         </div>
-                        <span className="text-sm text-gray-600">SmartKrishi AI is thinking...</span>
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-green-600 group-hover:translate-x-1 transition-all duration-300" />
                       </div>
                     </div>
                   </div>
-                )}
+                ))}
               </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto">
+            <div className="w-full">
+              {messages.map((msg, index) => (
+                msg.role === 'assistant' ? (
+                  // AI messages - full width ChatGPT style
+                  <div
+                    key={msg.id}
+                    className="w-full py-6 animate-fade-in"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <div className="max-w-4xl mx-auto px-6">
+                      <Message 
+                        role={msg.role}
+                        content={msg.content}
+                        timestamp={msg.timestamp}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  // User messages - floating bubbles
+                  <div
+                    key={msg.id}
+                    className="w-full py-4 animate-slide-up"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <div className="max-w-4xl mx-auto px-6 flex justify-end">
+                      <div className="max-w-2xl">
+                        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl rounded-tr-sm px-6 py-4 shadow-lg hover:shadow-xl transition-shadow duration-300">
+                          <p className="text-white leading-relaxed">{msg.content}</p>
+                          <p className="text-xs text-green-100 mt-2 opacity-80">
+                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              ))}
+              
+              {/* Loading indicator */}
+              {isLoading && (
+                <div className="w-full py-6 animate-fade-in">
+                  <div className="max-w-4xl mx-auto px-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                        <Sparkles className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                        <span className="text-sm text-gray-600 font-medium">AI is thinking...</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Fixed Chat Input at Bottom */}
-        <div className="flex-shrink-0">
-          <ChatInput
-            value={message}
-            onChange={setMessage}
-            onSend={handleSendMessage}
-            onFileUpload={handleFileUpload}
-            placeholder="Type your farming question here..."
-            disabled={isLoading}
-          />
+        <div className="flex-shrink-0 p-6 bg-gradient-to-t from-white/80 to-transparent backdrop-blur-sm">
+          <div className="max-w-4xl mx-auto">
+            <ChatInput
+              value={message}
+              onChange={setMessage}
+              onSend={handleSendMessage}
+              onFileUpload={handleFileUpload}
+              placeholder="Type your farming question here..."
+              disabled={isLoading}
+            />
+          </div>
         </div>
       </main>
 

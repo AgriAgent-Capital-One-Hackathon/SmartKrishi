@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, Suspense, lazy, useMemo } from 'react';
+import React, { useState, useRef, useEffect, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,12 +11,21 @@ import { Eye, EyeOff, Smartphone, Mail, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/services/auth';
 import type { ConfirmationResult } from 'firebase/auth';
-import { isValidPhoneNumber,parsePhoneNumber } from 'react-phone-number-input';
+import { isValidPhoneNumber } from 'react-phone-number-input';
+
 // Lazy load PhoneInput for better performance
 const PhoneInput = lazy(() => import('react-phone-number-input'));
 
 // Dynamic import for Firebase (only load when needed)
 const loadFirebaseAuth = () => import('@/lib/firebase');
+
+// Create conditional logger
+const isDev = import.meta.env.DEV;
+const logger = {
+  log: (...args: any[]) => isDev && console.log(...args),
+  error: (...args: any[]) => isDev && console.error(...args),
+  warn: (...args: any[]) => isDev && console.warn(...args),
+};
 
 // Update the validation schemas to use a single unified schema
 const mobileSchema = z.object({
@@ -72,7 +81,6 @@ const UnifiedAuthPage: React.FC = () => {
   
   // Performance optimization state
   const [backgroundImageLoaded, setBackgroundImageLoaded] = useState(false);
-  const [firebaseLoaded, setFirebaseLoaded] = useState(false);
   
   // Mobile auth state
   const [phoneNumber, setPhoneNumber] = useState<string>('');
@@ -140,7 +148,9 @@ const UnifiedAuthPage: React.FC = () => {
     
     // Preload Firebase when mobile mode is likely to be used
     if (loginMode === 'mobile') {
-      loadFirebaseAuth().then(() => setFirebaseLoaded(true)).catch(() => setFirebaseLoaded(true));
+      loadFirebaseAuth().catch(() => {
+        logger.warn('Failed to preload Firebase');
+      });
     }
   }, [loginMode]);
 
@@ -162,7 +172,7 @@ const UnifiedAuthPage: React.FC = () => {
   }, [authStep]);
 
   const startResendTimer = () => {
-    setResendTimer(60);
+    setResendTimer(15);
     setCanResend(false);
   };
 
@@ -201,6 +211,12 @@ const UnifiedAuthPage: React.FC = () => {
   
   // Mobile auth handlers
   const handleMobileSubmit = async (data: MobileFormData) => {
+    logger.log('Mobile form submitted:', { 
+      phone: data.phone_number?.replace(/\d(?=\d{4})/g, '*'), 
+      hasUsername: !!data.username 
+    });
+    logger.log('Is signup mode:', isSignupMode);
+
     // Clear any previous errors
     mobileForm.clearErrors();
 
@@ -268,7 +284,7 @@ const UnifiedAuthPage: React.FC = () => {
       setSuccessMessage('OTP sent successfully! Check your phone.');
       
     } catch (err) {
-      console.error('Mobile submit error:', err);
+      logger.error('Mobile submit error:', err);
       setError(err instanceof Error ? err.message : 'Failed to send OTP');
     } finally {
       setLoading(false);
@@ -332,6 +348,7 @@ const UnifiedAuthPage: React.FC = () => {
       navigate('/dashboard');
       
     } catch (err) {
+      logger.error('OTP verification error:', err);
       setError(err instanceof Error ? err.message : 'Invalid OTP');
     } finally {
       setLoading(false);
@@ -345,7 +362,7 @@ const UnifiedAuthPage: React.FC = () => {
 
     try {
       const { setupRecaptcha, sendOTPToPhone } = await loadFirebaseAuth();
-      const verifier = await setupRecaptcha('recaptcha-container', { forceNew: true, size: 'invisible' });
+      const verifier = await setupRecaptcha('recaptcha-container', { forceNew: false, size: 'invisible' });
       const confirmation = await sendOTPToPhone(phoneNumber, verifier);
       setConfirmationResult(confirmation);
       
@@ -356,6 +373,7 @@ const UnifiedAuthPage: React.FC = () => {
       otpRefs.current[0]?.focus();
       
     } catch (err) {
+      logger.error('Resend OTP error:', err);
       setError(err instanceof Error ? err.message : 'Failed to resend OTP');
     } finally {
       setLoading(false);
@@ -376,6 +394,7 @@ const UnifiedAuthPage: React.FC = () => {
       navigate('/dashboard');
       
     } catch (err: any) {
+      logger.error('Email login error:', err);
       setError(err.response?.data?.detail || err.message || 'Login failed');
     } finally {
       setLoading(false);
@@ -402,6 +421,7 @@ const UnifiedAuthPage: React.FC = () => {
       navigate('/dashboard');
       
     } catch (err: any) {
+      logger.error('Email signup error:', err);
       setError(err.response?.data?.detail || err.message || 'Signup failed');
     } finally {
       setLoading(false);
@@ -872,7 +892,7 @@ const UnifiedAuthPage: React.FC = () => {
                             value={digit}
                             onChange={(e) => handleOtpChange(index, e.target.value)}
                             onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                            className="w-12 h-12 text-center text-xl font-bold bg-white/50 border-2 border-white/30 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all duration-300"
+                            className="w-12 h-12 text-center text-xl font-bold bg-white/70 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all duration-300 shadow-sm"
                             inputMode="numeric"
                             whileFocus={{ scale: 1.05 }}
                             transition={{ duration: 0.2 }}
