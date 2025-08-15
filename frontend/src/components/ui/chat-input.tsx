@@ -53,9 +53,9 @@ export default function ChatInput({
   const canSend = value.trim() && !disabled
 
   return (
-    <div className={`px-4 py-4 ${className}`}>
+    <div className={`px-4 py-6 ${className}`}>
       <div className="max-w-4xl mx-auto">
-        <div className="relative bg-white border border-gray-300 rounded-xl hover:border-gray-400 focus-within:border-gray-500 transition-colors shadow-lg">
+        <div className="relative bg-gray-50 border border-gray-200 rounded-3xl shadow-sm hover:shadow-md transition-all duration-200 focus-within:border-emerald-500">
           <div className="flex items-end px-3 py-2">
             {/* File Upload Button */}
             <button

@@ -234,8 +234,8 @@ export default function DashboardPage() {
     }
   }
 
-  return (
-    <div className="h-screen flex bg-gray-50">
+return (
+    <div className="h-screen flex bg-gradient-to-br from-gray-50 via-green-50 to-white ">
       {/* Navbar */}
       <Navbar 
         onNewChat={handleNewChat}
@@ -244,43 +244,35 @@ export default function DashboardPage() {
       />
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen">
+      <main className="flex-1 flex flex-col h-screen bg-gradient-to-br from-gray-50 via-green-50 to-white">
         {showSuggestions ? (
           <div className="flex-1 overflow-y-auto p-8">
-            <div className="flex flex-col items-center justify-center min-h-full">
+            <div className="flex flex-col items-center justify-center min-h-full animate-fadeIn">
               <div className="text-center max-w-2xl mb-8">
                 <div className="mb-4">
-                  <span className="text-6xl">🌱</span>
+                  <span className="text-6xl drop-shadow-sm">🌱</span>
                 </div>
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                  Welcome to SmartKrishi
+                  Welcome to <span className="bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">SmartKrishi</span>
                 </h1>
                 <p className="text-lg text-gray-600">
                   Your AI-powered farming assistant. Ask me anything about agriculture, crops, or farming techniques.
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
                 {suggestionCards.map((card) => (
                   <Card 
                     key={card.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow border-green-100 hover:border-green-200"
+                    className="cursor-pointer backdrop-blur-lg bg-white/70 border border-green-100 hover:border-green-300 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 rounded-xl"
                     onClick={() => handleSuggestionClick(card.prompt)}
                   >
-                    <CardContent className="p-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex-shrink-0">
-                          {card.icon}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-800 mb-1">
-                            {card.text}
-                          </h3>
-                          <p className="text-sm text-gray-600 line-clamp-2">
-                            {card.prompt}
-                          </p>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                    <CardContent className="p-6 flex items-center space-x-4">
+                      <div className="flex-shrink-0">{card.icon}</div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-800 mb-1">{card.text}</h3>
+                        <p className="text-sm text-gray-600 line-clamp-2">{card.prompt}</p>
                       </div>
+                      <ChevronRight className="w-5 h-5 text-gray-400" />
                     </CardContent>
                   </Card>
                 ))}
@@ -288,84 +280,63 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto">
-            <div className="w-full">
-              {messages.map((msg) => (
-                msg.role === 'assistant' ? (
-                  // AI messages - full width ChatGPT style with same background
-                  <div
-                    key={msg.id}
-                    className="w-full py-4 bg-white"
-                  >
-                    <div className="max-w-4xl mx-auto px-6">
-                      <Message 
-                        role={msg.role}
-                        content={msg.content}
-                        timestamp={msg.timestamp}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  // User messages - same background as AI messages
-                  <div
-                    key={msg.id}
-                    className="w-full py-4 bg-white"
-                  >
-                    <div className="max-w-4xl mx-auto px-6">
-                      <Message 
-                        role={msg.role}
-                        content={msg.content}
-                        timestamp={msg.timestamp}
-                      />
-                    </div>
-                  </div>
-                )
-              ))}
-              
-              {/* Loading indicator */}
-              {isLoading && (
-                <div className="w-full py-4 bg-white">
-                  <div className="max-w-4xl mx-auto px-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                        <div className="w-4 h-4 text-white">🤖</div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="mb-1">
-                          <span className="text-sm font-medium text-gray-900">SmartKrishi AI</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                          </div>
-                          <span className="text-sm text-gray-600">Thinking...</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+  <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-green-50 to-white">
+    <div className="w-full">
+      {messages.map((msg) => (
+        <div
+          key={msg.id}
+          className="w-full py-4"
+        >
+          <div className="max-w-4xl mx-auto px-6 animate-fadeIn">
+            <Message 
+              role={msg.role}
+              content={msg.content}
+              timestamp={msg.timestamp}
+            />
+          </div>
+        </div>
+      ))}
+      
+      {isLoading && (
+        <div className="w-full py-4">
+          <div className="max-w-4xl mx-auto px-6 animate-pulse">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
+                <div className="w-4 h-4 text-white">🤖</div>
+              </div>
+              <div className="flex-1">
+                <div className="mb-1">
+                  <span className="text-sm font-medium text-gray-900">SmartKrishi AI</span>
                 </div>
-              )}
-              
-              <div ref={messagesEndRef} style={{ height: '1px' }} />
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                </div>
+              </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
+      
+      <div ref={messagesEndRef} style={{ height: '1px' }} />
+    </div>
+  </div>
+)}
 
         {/* Fixed Chat Input at Bottom */}
-        <div className="flex-shrink-0 bg-gray-50 border-none">
+        <div className="flex-shrink-0 bg-transparent border-none">
           <ChatInput
             value={message}
             onChange={setMessage}
             onSend={handleSendMessage}
             onFileUpload={handleFileUpload}
-            placeholder="Type your farming question here..."
             disabled={isLoading}
           />
         </div>
       </main>
 
+      {/* Drawers & Modals */}
       <HistoryDrawer
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
@@ -373,7 +344,6 @@ export default function DashboardPage() {
         onNewChat={handleNewChat}
         currentChatId={currentChatId || undefined}
       />
-
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
