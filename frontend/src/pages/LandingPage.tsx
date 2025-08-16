@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
-import { ArrowRight, Bot, Cloud, Eye, TrendingUp, ChevronDown, Github, Mail, Sparkles, Zap, Target } from "lucide-react"
+import { ArrowRight, Bot, Cloud, Eye, TrendingUp, ChevronDown, Mail, Sparkles, Zap, Target } from "lucide-react"
 // Add these imports for brand icons
 import { FaTwitter, FaLinkedin, FaInstagram, FaGithub } from "react-icons/fa"
 import { Button } from "@/components/ui/button"

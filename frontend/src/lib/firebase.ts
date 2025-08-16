@@ -91,7 +91,7 @@ export const setupRecaptcha = (
       // Create new verifier with proper callbacks
       const verifier = new RecaptchaVerifier(auth, containerId, {
         size,
-        callback: (response: any) => {
+        callback: (_response: any) => {
           logger.log('reCAPTCHA solved');
           // Remove the actual token from logs
         },

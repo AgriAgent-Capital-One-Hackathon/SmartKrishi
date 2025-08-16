@@ -47,12 +47,14 @@ const getIconForSuggestion = (id: string) => {
 export default function DashboardPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [suggestionCards, setSuggestionCards] = useState<SuggestionCard[]>([]);
+  const [readingMessageId, setReadingMessageId] = useState<string | null>(null);
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -116,9 +118,11 @@ export default function DashboardPage() {
   const handleNewChat = () => {
     setMessages([]);
     setMessage('');
+    setSelectedFiles([]);
     setCurrentChatId(null);
     setShowSuggestions(true);
     setIsLoading(false);
+    setReadingMessageId(null);
   };
 
   const handleChatSelect = async (chatId: string) => {
@@ -155,62 +159,109 @@ export default function DashboardPage() {
     setMessage(prompt)
   }
 
-  const handleFileUpload = async (file: File) => {
-    if (isLoading) return;
-    setShowSuggestions(false);
+  const handleFileUpload = (files: File[]) => {
+    setSelectedFiles(prevFiles => [...prevFiles, ...files]);
+  }
 
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: `📷 Uploaded image: ${file.name}`,
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
+  const handleFileRemove = (index: number) => {
+    setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+  }
 
-    try {
-      const response = await chatService.analyzeImage(file, `Analyze this crop image: ${file.name}`, currentChatId || undefined);
-      if (!currentChatId) {
-        setCurrentChatId(response.chat_id);
-      }
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.response,
-        timestamp: new Date()
+  const handleCopyMessage = (content: string) => {
+    // Already handled by the MessageActions component
+    console.log('Message copied:', content);
+  }
+
+  const handleEditMessage = (messageId: string) => {
+    const messageToEdit = messages.find(m => m.id === messageId);
+    if (messageToEdit && messageToEdit.role === 'user') {
+      setMessage(messageToEdit.content);
+      // Remove the message and all subsequent messages for re-generation
+      const messageIndex = messages.findIndex(m => m.id === messageId);
+      setMessages(prev => prev.slice(0, messageIndex));
+      setSelectedFiles([]);
+    }
+  }
+
+  const handleLikeMessage = (messageId: string) => {
+    console.log('Message liked:', messageId);
+    // TODO: Implement feedback to backend
+  }
+
+  const handleDislikeMessage = (messageId: string) => {
+    console.log('Message disliked:', messageId);
+    // TODO: Implement feedback to backend
+  }
+
+  const handleReadAloud = (content: string, messageId: string) => {
+    if ('speechSynthesis' in window) {
+      // Stop any current reading
+      window.speechSynthesis.cancel();
+      setReadingMessageId(messageId);
+      
+      const utterance = new SpeechSynthesisUtterance(content);
+      utterance.rate = 0.8;
+      utterance.pitch = 1.0;
+      utterance.volume = 0.8;
+      
+      utterance.onend = () => {
+        setReadingMessageId(null);
       };
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      console.error('Failed to analyze image:', error);
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, I couldn\'t analyze the image. Please try again.',
-        timestamp: new Date()
-      }]);
-    } finally {
-      setIsLoading(false);
+      
+      utterance.onerror = () => {
+        setReadingMessageId(null);
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    } else {
+      console.warn('Text-to-speech not supported in this browser');
+    }
+  }
+
+  const handleStopReading = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setReadingMessageId(null);
     }
   }
 
   const handleSendMessage = async () => {
-    if (!message.trim() || isLoading) return;
+    if ((!message.trim() && selectedFiles.length === 0) || isLoading) return;
 
     const messageText = message.trim();
     setMessage('');
     setShowSuggestions(false);
 
+    let userMessageContent = messageText;
+    if (selectedFiles.length > 0) {
+      const fileNames = selectedFiles.map(f => f.name).join(', ');
+      userMessageContent = messageText ? 
+        `${messageText}\n� ${fileNames}` : 
+        `� ${fileNames}`;
+    }
+
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: messageText,
+      content: userMessageContent,
       timestamp: new Date()
     };
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
     try {
-      const response = await chatService.sendMessage(messageText, currentChatId || undefined);
+      let response;
+      if (selectedFiles.length > 0) {
+        // Handle file upload - for now, just use the first file
+        // TODO: Implement multi-file support in backend
+        const promptText = messageText || `Analyze this file: ${selectedFiles[0].name}`;
+        response = await chatService.analyzeImage(selectedFiles[0], promptText, currentChatId || undefined);
+        setSelectedFiles([]); // Clear files after sending
+      } else {
+        // Handle text message
+        response = await chatService.sendMessage(messageText, currentChatId || undefined);
+      }
+
       if (!currentChatId) {
         setCurrentChatId(response.chat_id);
       }
@@ -289,9 +340,17 @@ return (
         >
           <div className="max-w-4xl mx-auto px-6 animate-fadeIn">
             <Message 
+              id={msg.id}
               role={msg.role}
               content={msg.content}
               timestamp={msg.timestamp}
+              onCopy={handleCopyMessage}
+              onEdit={handleEditMessage}
+              onLike={handleLikeMessage}
+              onDislike={handleDislikeMessage}
+              onReadAloud={(content) => handleReadAloud(content, msg.id)}
+              onStopReading={handleStopReading}
+              isReading={readingMessageId === msg.id}
             />
           </div>
         </div>
@@ -331,6 +390,8 @@ return (
             onChange={setMessage}
             onSend={handleSendMessage}
             onFileUpload={handleFileUpload}
+            selectedFiles={selectedFiles}
+            onFileRemove={handleFileRemove}
             disabled={isLoading}
           />
         </div>

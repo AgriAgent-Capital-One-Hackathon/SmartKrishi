@@ -145,9 +145,10 @@ export default function DashboardPage() {
     setMessage(prompt)
   }
 
-  const handleFileUpload = async (file: File) => {
-    if (isLoading) return;
+  const handleFileUpload = async (files: File[]) => {
+    if (isLoading || files.length === 0) return;
 
+    const file = files[0]; // Use the first file for now
     setIsLoading(true);
     setShowSuggestions(false);
 
@@ -288,6 +289,7 @@ export default function DashboardPage() {
                   >
                     <div className="max-w-4xl mx-auto px-6">
                       <Message 
+                        id={msg.id}
                         role={msg.role}
                         content={msg.content}
                         timestamp={msg.timestamp}

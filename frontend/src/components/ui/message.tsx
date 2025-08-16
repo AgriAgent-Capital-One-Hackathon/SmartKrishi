@@ -1,28 +1,60 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import MessageActions from './message-actions';
 
 interface MessageProps {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  id: string;
+  onCopy?: (content: string) => void;
+  onEdit?: (messageId: string) => void;
+  onLike?: (messageId: string) => void;
+  onDislike?: (messageId: string) => void;
+  onReadAloud?: (content: string) => void;
+  onStopReading?: () => void;
+  isReading?: boolean;
 }
 
-export default function Message({ role, content, timestamp }: MessageProps) {
+export default function Message({ 
+  role, 
+  content, 
+  timestamp, 
+  id,
+  onCopy,
+  onEdit,
+  onLike,
+  onDislike,
+  onReadAloud,
+  onStopReading,
+  isReading
+}: MessageProps) {
   const isUser = role === 'user';
   
   if (isUser) {
     // User messages - right aligned bubble
     return (
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-4 group">
         <div className="max-w-[80%]">
           <div className="rounded-2xl px-4 py-3 bg-green-600 text-white">
             <p className="text-[15px] leading-relaxed whitespace-pre-wrap">
               {content}
             </p>
           </div>
-          <div className="text-xs text-gray-300 mt-1 text-right">
-            {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          <div className="flex items-center justify-between mt-2">
+            <div className="text-xs text-gray-300 text-right flex-1">
+              {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            {/* User message actions */}
+            <MessageActions
+              messageId={id}
+              role={role}
+              content={content}
+              onCopy={onCopy || (() => {})}
+              onEdit={onEdit}
+              className="ml-2"
+            />
           </div>
         </div>
       </div>
@@ -31,7 +63,7 @@ export default function Message({ role, content, timestamp }: MessageProps) {
 
   // AI messages - markdown styled
   return (
-    <div className="w-full">
+    <div className="w-full group">
       <div className="text-gray-900">
         {content && content.trim() ? (
           <div className="prose prose-sm max-w-none prose-gray">
@@ -73,9 +105,23 @@ export default function Message({ role, content, timestamp }: MessageProps) {
         )}
       </div>
       
-      {/* Timestamp */}
-      <div className="text-xs text-gray-400 mt-2">
-        {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      {/* Timestamp and Actions */}
+      <div className="flex items-center justify-between mt-2">
+        <div className="text-xs text-gray-400">
+          {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </div>
+        {/* AI message actions */}
+        <MessageActions
+          messageId={id}
+          role={role}
+          content={content}
+          onCopy={onCopy || (() => {})}
+          onLike={onLike}
+          onDislike={onDislike}
+          onReadAloud={onReadAloud}
+          onStopReading={onStopReading}
+          isReading={isReading}
+        />
       </div>
     </div>
   );
