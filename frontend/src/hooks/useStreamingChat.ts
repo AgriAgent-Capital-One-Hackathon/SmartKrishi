@@ -166,7 +166,6 @@ export const useStreamingChat = ({
       };
 
       switch (event.type) {
-        case 'log':
         case 'plan':
         case 'thinking':
         case 'tool_call':
@@ -176,50 +175,60 @@ export const useStreamingChat = ({
         case 'grounding_web_search_queries':
         case 'grounding_chunks':
         case 'grounding_supports':
-          // Add reasoning step for all these event types
-          const reasoningStep: ReasoningStep = {
-            id: `${Date.now()}-${Math.random()}`,
-            step_type: event.type,
-            step_order: currentMessage.reasoningSteps.length,
-            content: event.content || event.message || '',
-            // Handle specific fields for each event type
-            stage: event.stage,
-            message: event.message,
-            plan: event.plan,
-            raw_response: event.raw_response,
-            tool: event.tool,
-            tool_name: event.tool,
-            tool_args: typeof event.args === 'string' ? event.args : JSON.stringify(event.args || ''),
-            tool_result: event.result,
-            code: event.code,
-            language: event.language,
-            outcome: event.outcome,
-            result: event.result,
-            query: event.query,
-            queries: event.queries,
-            sources: event.sources,
-            supports: event.supports,
-            results: event.results,
-            error: event.error,
-            step_metadata: event,
-            created_at: new Date().toISOString()
-          };
+          // Skip log events and add reasoning step for all other event types
+          // Check for duplicate events to prevent double entries
+          const eventContent = event.content || event.message || '';
+          const isDuplicate = currentMessage.reasoningSteps.some(step => 
+            step.step_type === event.type && 
+            step.content === eventContent &&
+            JSON.stringify(step.step_metadata) === JSON.stringify(event)
+          );
+          
+          if (!isDuplicate) {
+            const reasoningStep: ReasoningStep = {
+              id: `${Date.now()}-${Math.random()}`,
+              step_type: event.type,
+              step_order: currentMessage.reasoningSteps.length,
+              content: eventContent,
+              // Handle specific fields for each event type
+              stage: event.stage,
+              message: event.message,
+              plan: event.plan,
+              raw_response: event.raw_response,
+              tool: event.tool,
+              tool_name: event.tool,
+              tool_args: typeof event.args === 'string' ? event.args : JSON.stringify(event.args || ''),
+              tool_result: event.result,
+              code: event.code,
+              language: event.language,
+              outcome: event.outcome,
+              result: event.result,
+              query: event.query,
+              queries: event.queries,
+              sources: event.sources,
+              supports: event.supports,
+              results: event.results,
+              error: event.error,
+              step_metadata: event,
+              created_at: new Date().toISOString()
+            };
 
-          currentMessage.reasoningSteps.push(reasoningStep);
-          currentMessage.isThinking = true;
-          
-          // Update the thinking message
-          const thinkingMessage: ChatMessage = {
-            id: messageId,
-            role: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            reasoning_steps: [...currentMessage.reasoningSteps], // Create new array for updates
-            is_thinking: true,
-            is_streaming: false
-          };
-          
-          onMessageUpdate?.(thinkingMessage);
+            currentMessage.reasoningSteps.push(reasoningStep);
+            currentMessage.isThinking = true;
+            
+            // Update the thinking message
+            const thinkingMessage: ChatMessage = {
+              id: messageId,
+              role: 'assistant',
+              content: '',
+              timestamp: new Date(),
+              reasoning_steps: [...currentMessage.reasoningSteps], // Create new array for updates
+              is_thinking: true,
+              is_streaming: false
+            };
+            
+            onMessageUpdate?.(thinkingMessage);
+          }
           break;
 
         case 'response_chunk':

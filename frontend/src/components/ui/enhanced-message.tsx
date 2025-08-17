@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { 
   ChevronDown, 
   ChevronRight, 
-  Bot,
   Copy,
   Check,
   ThumbsUp,
@@ -58,12 +57,31 @@ const getEventIcon = (eventType: string) => {
 // Format event content for display
 const formatEventContent = (event: ReasoningStep): string => {
   switch (event.step_type) {
-    case 'log':
-      return event.content || `${event.stage}: ${event.message || ''}`;
     case 'plan':
       if (event.plan) {
-        const plan = typeof event.plan === 'string' ? event.plan : JSON.stringify(event.plan, null, 2);
-        return `**Plan:** ${plan}`;
+        let planContent = '';
+        try {
+          const planData = typeof event.plan === 'string' ? JSON.parse(event.plan) : event.plan;
+          
+          if (planData.primary_intent) {
+            planContent += `**Primary Intent:** ${planData.primary_intent}\n\n`;
+          }
+          if (planData.location) {
+            planContent += `**Location:** ${planData.location}\n\n`;
+          }
+          if (planData.crop) {
+            planContent += `**Crop:** ${planData.crop}\n\n`;
+          }
+          if (planData.tools_needed && Array.isArray(planData.tools_needed)) {
+            planContent += `**Tools Needed:** ${planData.tools_needed.join(', ')}\n\n`;
+          }
+          
+          return planContent || event.content || 'Planning...';
+        } catch (e) {
+          // Fallback to original format if parsing fails
+          const plan = typeof event.plan === 'string' ? event.plan : JSON.stringify(event.plan, null, 2);
+          return `**Plan:** ${plan}`;
+        }
       }
       return event.content || 'Planning...';
     case 'thinking':
@@ -88,8 +106,19 @@ const formatEventContent = (event: ReasoningStep): string => {
       const queries = event.queries || [];
       return `**Web Searches:** ${queries.map((q: string) => `"${q}"`).join(', ')}`;
     case 'grounding_chunks':
-      const sources = event.sources || [];
-      return `**Sources:** ${sources.length} references found`;
+      if (event.sources) {
+        const sources = event.sources;
+        const sourceList = sources.map((source: any, index: number) => {
+          if (typeof source === 'object' && source.uri && source.title) {
+            return `${index + 1}. [${source.title}](${source.uri})`;
+          } else if (typeof source === 'string') {
+            return `${index + 1}. ${source}`;
+          }
+          return `${index + 1}. ${JSON.stringify(source)}`;
+        }).join('\n');
+        return `**Sources:**\n\n${sourceList}`;
+      }
+      return `**Sources:** No sources available`;
     case 'grounding_supports':
       return `**Citations:** Supporting evidence added`;
     case 'error':
@@ -138,7 +167,7 @@ const StreamingText: React.FC<{ content: string }> = ({ content }) => {
           {content}
         </ReactMarkdown>
       </div>
-      <span className="inline-block w-2 h-5 bg-blue-500 ml-1 animate-pulse"></span>
+      <span className="inline-block w-2 h-2 bg-green-500 rounded-full ml-1 animate-pulse"></span>
     </div>
   );
 };
@@ -148,7 +177,8 @@ const ReasoningTimeline: React.FC<{
   steps: ReasoningStep[]; 
   isExpanded: boolean; 
   onToggle: () => void; 
-}> = ({ steps, isExpanded, onToggle }) => {
+  isThinking?: boolean;
+}> = ({ steps, isExpanded, onToggle, isThinking = false }) => {
   if (steps.length === 0) return null;
 
   const sortedSteps = [...steps].sort((a, b) => a.step_order - b.step_order);
@@ -156,25 +186,43 @@ const ReasoningTimeline: React.FC<{
   return (
     <div className="mb-4">
       <Collapsible open={isExpanded} onOpenChange={onToggle}>
-        <CollapsibleTrigger className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-800 transition-colors cursor-pointer p-2 rounded hover:bg-gray-50">
-          <Brain className="w-4 h-4" />
-          <span>Show reasoning ({steps.length} steps)</span>
+        <CollapsibleTrigger 
+          className={`flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-800 transition-colors cursor-pointer p-2 rounded hover:bg-gray-50 ${
+            isThinking ? 'animate-pulse' : ''
+          }`}
+        >
+          <Brain className={`w-4 h-4 ${isThinking ? 'text-green-500 animate-pulse' : 'text-gray-600'}`} />
+          <span className={isThinking ? 'bg-gradient-to-r from-gray-600 via-green-500 to-gray-600 bg-clip-text text-transparent bg-200% animate-shimmer' : ''}>
+            Show reasoning ({steps.length} steps)
+          </span>
           {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
           <div className="relative pl-8 pb-4">
-            {/* Vertical timeline line */}
-            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+            {/* Animated vertical timeline line */}
+            <div className={`absolute left-4 top-0 bottom-0 w-0.5 ${
+              isThinking 
+                ? 'bg-gradient-to-b from-green-500 via-green-300 to-gray-200 animate-pulse' 
+                : 'bg-gray-200'
+            }`}></div>
             
             {sortedSteps.map((step, index) => (
               <div key={step.id || index} className="relative mb-4 last:mb-0">
-                {/* Timeline dot */}
-                <div className="absolute -left-7 top-2 w-6 h-6 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center">
+                {/* Timeline dot with glow effect */}
+                <div className={`absolute -left-7 top-2 w-6 h-6 bg-white border-2 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  isThinking && index === sortedSteps.length - 1
+                    ? 'border-green-400 shadow-lg shadow-green-200 animate-pulse' 
+                    : 'border-gray-300'
+                }`}>
                   {getEventIcon(step.step_type)}
                 </div>
                 
-                {/* Step content */}
-                <div className="bg-gray-50 p-3 rounded-lg ml-1">
+                {/* Step content with animation */}
+                <div className={`bg-gray-50 p-3 rounded-lg ml-1 transition-all duration-300 ${
+                  isThinking && index === sortedSteps.length - 1
+                    ? 'ring-2 ring-green-200 shadow-md' 
+                    : ''
+                }`}>
                   <div className="prose prose-sm max-w-none">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {formatEventContent(step)}
@@ -345,12 +393,12 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
   const hasReasoning = message.reasoning_steps && message.reasoning_steps.length > 0;
 
   if (isUser) {
-    // User message - green bubble, right aligned
+    // User message - green bubble, right aligned, smaller size
     return (
       <div className="flex justify-end mb-6 group">
-        <div className="max-w-lg">
-          <div className="bg-green-500 text-white px-4 py-3 rounded-2xl rounded-br-md">
-            <div className="prose max-w-none text-white prose-invert">
+        <div className="max-w-sm">
+          <div className="bg-green-500 text-white px-3 py-2 rounded-2xl rounded-br-md text-sm">
+            <div className="prose prose-sm max-w-none text-white prose-invert">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {message.content}
               </ReactMarkdown>
@@ -367,29 +415,22 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
     );
   }
 
-  // AI message - transparent background, left aligned
+  // AI message - transparent background, left aligned, consistent width with chat input
   return (
     <div className="flex justify-start mb-6 group">
-      <div className="max-w-4xl w-full">
-        {/* AI Avatar and Name */}
-        <div className="flex items-center space-x-2 mb-2">
-          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-gray-600" />
-          </div>
-          <span className="text-sm font-medium text-gray-700">SmartKrishi AI</span>
-        </div>
-
+      <div className="w-full max-w-4xl">
         {/* Reasoning Timeline (shown first, at the top) */}
-        {hasReasoning && !message.is_thinking && (
+        {hasReasoning && (
           <ReasoningTimeline
             steps={message.reasoning_steps!}
             isExpanded={isReasoningExpanded}
             onToggle={() => setIsReasoningExpanded(!isReasoningExpanded)}
+            isThinking={message.is_thinking}
           />
         )}
 
         {/* Message Content */}
-        <div className="ml-10">
+        <div>
           {message.is_thinking ? (
             <ThinkingAnimation />
           ) : message.is_streaming ? (
