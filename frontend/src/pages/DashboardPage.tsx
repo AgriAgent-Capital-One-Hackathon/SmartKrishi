@@ -5,13 +5,16 @@ import Message from "@/components/ui/message"
 import Navbar from "@/components/ui/navbar"
 import HistoryDrawer from "@/components/ui/history-drawer"
 import SettingsModal from "@/components/ui/settings-modal"
+import { FallbackStatus } from "@/components/ui/fallback-status"
+import { FallbackSettings } from "@/components/ui/fallback-settings"
 import { 
   Leaf, 
   Sun, 
   Bug, 
   DollarSign,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Phone
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
@@ -55,6 +58,7 @@ export default function DashboardPage() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [suggestionCards, setSuggestionCards] = useState<SuggestionCard[]>([]);
   const [readingMessageId, setReadingMessageId] = useState<string | null>(null);
+  const [showFallbackSettings, setShowFallbackSettings] = useState(false);
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -331,57 +335,76 @@ return (
             </div>
           </div>
         ) : (
-  <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-green-50 to-white">
-    <div className="w-full">
-      {messages.map((msg) => (
-        <div
-          key={msg.id}
-          className="w-full py-4"
-        >
-          <div className="max-w-4xl mx-auto px-6 animate-fadeIn">
-            <Message 
-              id={msg.id}
-              role={msg.role}
-              content={msg.content}
-              timestamp={msg.timestamp}
-              onCopy={handleCopyMessage}
-              onEdit={handleEditMessage}
-              onLike={handleLikeMessage}
-              onDislike={handleDislikeMessage}
-              onReadAloud={(content) => handleReadAloud(content, msg.id)}
-              onStopReading={handleStopReading}
-              isReading={readingMessageId === msg.id}
-            />
-          </div>
-        </div>
-      ))}
-      
-      {isLoading && (
-        <div className="w-full py-4">
-          <div className="max-w-4xl mx-auto px-6 animate-pulse">
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
-                <div className="w-4 h-4 text-white">🤖</div>
-              </div>
-              <div className="flex-1">
-                <div className="mb-1">
-                  <span className="text-sm font-medium text-gray-900">SmartKrishi AI</span>
-                </div>
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+          <>
+            {/* Chat Header with SMS Fallback Status */}
+            <div className="flex-shrink-0 border-b bg-white/80 backdrop-blur-sm">
+              <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-800">Chat</h2>
+                <div className="flex items-center gap-2">
+                  <FallbackStatus onOpenSettings={() => setShowFallbackSettings(true)} />
+                  <button
+                    onClick={() => setShowFallbackSettings(true)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="SMS Fallback Settings"
+                  >
+                    <Phone className="h-4 w-4 text-gray-600" />
+                  </button>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-      
-      <div ref={messagesEndRef} style={{ height: '1px' }} />
-    </div>
-  </div>
-)}
+            
+            <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-green-50 to-white">
+              <div className="w-full">
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className="w-full py-4"
+                  >
+                    <div className="max-w-4xl mx-auto px-6 animate-fadeIn">
+                      <Message 
+                        id={msg.id}
+                        role={msg.role}
+                        content={msg.content}
+                        timestamp={msg.timestamp}
+                        onCopy={handleCopyMessage}
+                        onEdit={handleEditMessage}
+                        onLike={handleLikeMessage}
+                        onDislike={handleDislikeMessage}
+                        onReadAloud={(content) => handleReadAloud(content, msg.id)}
+                        onStopReading={handleStopReading}
+                        isReading={readingMessageId === msg.id}
+                      />
+                    </div>
+                  </div>
+                ))}
+                
+                {isLoading && (
+                  <div className="w-full py-4">
+                    <div className="max-w-4xl mx-auto px-6 animate-pulse">
+                      <div className="flex items-start space-x-4">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
+                          <div className="w-4 h-4 text-white">🤖</div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="mb-1">
+                            <span className="text-sm font-medium text-gray-900">SmartKrishi AI</span>
+                          </div>
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div ref={messagesEndRef} style={{ height: '1px' }} />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Fixed Chat Input at Bottom */}
         <div className="flex-shrink-0 bg-transparent border-none">
@@ -411,6 +434,26 @@ return (
         userName={user?.email || 'Guest'}
         onLogout={handleLogout}
       />
+      
+      {/* SMS Fallback Settings Modal */}
+      {showFallbackSettings && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold">SMS Fallback Settings</h3>
+              <button
+                onClick={() => setShowFallbackSettings(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-700"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6">
+              <FallbackSettings />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -23,5 +23,14 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
+    # SMS Fallback fields
+    auto_fallback_enabled = Column(Boolean, default=False)
+    fallback_mode = Column(String(20), default="manual")  # manual, auto
+    fallback_active = Column(Boolean, default=False)
+    fallback_phone = Column(String, nullable=True)  # SMS fallback phone (can be different from login phone)
+    fallback_phone_verified = Column(Boolean, default=False)
+    whatsapp_user_id = Column(String, unique=True, nullable=True)
+    
     # Relationships
     chats = relationship("Chat", back_populates="user")
+    fallback_sessions = relationship("FallbackSession", back_populates="user")

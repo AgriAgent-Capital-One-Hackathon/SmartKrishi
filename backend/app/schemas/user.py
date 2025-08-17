@@ -26,6 +26,14 @@ class UserInDBBase(UserBase):
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
+    
+    # SMS Fallback fields
+    auto_fallback_enabled: Optional[bool] = False
+    fallback_mode: Optional[str] = "manual"
+    fallback_active: Optional[bool] = False
+    fallback_phone: Optional[str] = None
+    fallback_phone_verified: Optional[bool] = False
+    whatsapp_user_id: Optional[str] = None
 
     class Config:
         from_attributes = True

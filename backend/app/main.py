@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 from app.db.database import engine, Base
 from app.models import user  # Import models to create tables
-from app.routers import auth, mobile_auth, chat  # Add chat import
+from app.routers import auth, mobile_auth, chat, fallback  # Add fallback import
 
 # Create FastAPI instance
 app = FastAPI(
@@ -62,6 +62,7 @@ async def startup_event():
 app.include_router(auth.router, prefix=f"{API_V1_STR}/auth", tags=["authentication"])
 app.include_router(mobile_auth.router, prefix=f"{API_V1_STR}/auth", tags=["mobile-authentication"])
 app.include_router(chat.router, prefix=f"{API_V1_STR}/chat", tags=["chat"])  # Add chat router
+app.include_router(fallback.router, prefix=f"{API_V1_STR}/fallback", tags=["fallback"])  # Add fallback router
 
 @app.get("/")
 def read_root():

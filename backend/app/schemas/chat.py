@@ -8,6 +8,10 @@ class ChatMessageBase(BaseModel):
     content: str
     message_type: str = 'text'
     file_url: Optional[str] = None
+    is_edited: bool = False
+    original_content: Optional[str] = None
+    fallback_type: Optional[str] = None
+    fallback_phone_number: Optional[str] = None
 
 class ChatMessageCreate(ChatMessageBase):
     pass
@@ -17,12 +21,15 @@ class ChatMessage(ChatMessageBase):
     chat_id: UUID
     user_id: int
     created_at: datetime
+    edited_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
 
 class ChatBase(BaseModel):
     title: str
+    is_fallback_chat: bool = False
+    fallback_phone_number: Optional[str] = None
 
 class ChatCreate(ChatBase):
     pass
@@ -48,6 +55,8 @@ class ChatSummary(BaseModel):
     updated_at: datetime
     last_message: Optional[str] = None
     message_count: int = 0
+    is_fallback_chat: bool = False
+    fallback_phone_number: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -62,8 +71,18 @@ class SendMessageResponse(BaseModel):
     chat_id: UUID
     message_id: UUID
 
+class EditMessageRequest(BaseModel):
+    content: str
+
+class EditMessageResponse(BaseModel):
+    success: bool
+    message: str
+    updated_message: ChatMessage
+
 class CreateChatRequest(BaseModel):
     title: str
+    is_fallback_chat: bool = False
+    fallback_phone_number: Optional[str] = None
 
 class UpdateChatRequest(BaseModel):
     title: str

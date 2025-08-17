@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { X, Search, Plus, MoreVertical, Edit2, Trash2 } from "lucide-react"
+import { X, Search, Plus, MoreVertical, Edit2, Trash2, MessageCircle, Phone } from "lucide-react"
 import { chatService, type ChatSummary } from "@/services/chatService"
 
 interface HistoryDrawerProps {
@@ -23,6 +23,7 @@ export default function HistoryDrawer({
   const [editingName, setEditingName] = useState("")
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'normal' | 'fallback'>('all')
 
   // Map of refs for each chat menu
   const menuRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -59,10 +60,19 @@ export default function HistoryDrawer({
     }
   }
 
-  const filteredHistory = chatHistory.filter(chat =>
-    chat.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    chat.last_message.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredHistory = chatHistory.filter(chat => {
+    // Search filter
+    const matchesSearch = chat.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      chat.last_message.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Category filter (for now, treat all chats as normal since we don't have fallback flag in the current schema)
+    // This can be extended when the backend supports is_fallback_chat flag
+    const matchesCategory = selectedCategory === 'all' || 
+      (selectedCategory === 'normal' && true) || // All current chats are normal
+      (selectedCategory === 'fallback' && false); // No fallback chats yet
+    
+    return matchesSearch && matchesCategory;
+  });
 
   const handleRename = (chat: ChatSummary) => {
     setEditingId(chat.id)
@@ -172,6 +182,42 @@ export default function HistoryDrawer({
               className="w-full pl-10 pr-4 py-2 rounded-full bg-white/60 border border-white/30 focus:ring-2 focus:ring-emerald-400 text-sm placeholder-gray-500"
             />
           </div>
+          
+          {/* Category Tabs */}
+          <div className="flex bg-white/40 rounded-full p-1 mt-3">
+            <button
+              onClick={() => setSelectedCategory('all')}
+              className={`flex-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                selectedCategory === 'all' 
+                  ? 'bg-emerald-500 text-white shadow-sm' 
+                  : 'text-emerald-700 hover:bg-white/60'
+              }`}
+            >
+              All ({chatHistory.length})
+            </button>
+            <button
+              onClick={() => setSelectedCategory('normal')}
+              className={`flex-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center justify-center gap-1 ${
+                selectedCategory === 'normal' 
+                  ? 'bg-blue-500 text-white shadow-sm' 
+                  : 'text-blue-700 hover:bg-white/60'
+              }`}
+            >
+              <MessageCircle className="w-3 h-3" />
+              Normal ({chatHistory.length})
+            </button>
+            <button
+              onClick={() => setSelectedCategory('fallback')}
+              className={`flex-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center justify-center gap-1 ${
+                selectedCategory === 'fallback' 
+                  ? 'bg-orange-500 text-white shadow-sm' 
+                  : 'text-orange-700 hover:bg-white/60'
+              }`}
+            >
+              <Phone className="w-3 h-3" />
+              SMS (0)
+            </button>
+          </div>
         </div>
 
         {/* New Chat Button */}
@@ -191,7 +237,11 @@ export default function HistoryDrawer({
             <div className="p-4 text-center text-gray-500">Loading chats...</div>
           ) : filteredHistory.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
-              {searchQuery ? "No chats found" : "No chat history yet"}
+              {searchQuery 
+                ? "No chats found" 
+                : selectedCategory === 'fallback' 
+                  ? "No SMS fallback chats yet" 
+                  : "No chat history yet"}
             </div>
           ) : (
             filteredHistory.map((chat) => (
@@ -208,35 +258,46 @@ export default function HistoryDrawer({
                 }}
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    {editingId === chat.id ? (
-                      <input
-                        type="text"
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        onBlur={handleSaveRename}
-                        onKeyDown={(e) => e.key === "Enter" && handleSaveRename()}
-                        className="w-full text-sm font-medium text-gray-900 bg-white border border-emerald-500 rounded px-2 py-1"
-                        autoFocus
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    ) : (
-                      <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {chat.title}
-                      </h3>
-                    )}
-                    <p className="text-xs text-gray-500 truncate mt-1">
-                      {chat.last_message || "No messages yet"}
-                    </p>
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="text-xs text-gray-400">
-                        {formatDate(chat.updated_at)}
-                      </p>
-                      {chat.message_count > 0 && (
-                        <span className="text-xs text-gray-400">
-                          {chat.message_count} messages
-                        </span>
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    {/* Chat Type Icon */}
+                    <div className="flex-shrink-0 mt-0.5">
+                      <MessageCircle className="w-3.5 h-3.5 text-blue-500" />
+                      {/* Future: <Phone className="w-3.5 h-3.5 text-orange-500" /> for SMS chats */}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      {editingId === chat.id ? (
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          onBlur={handleSaveRename}
+                          onKeyDown={(e) => e.key === "Enter" && handleSaveRename()}
+                          className="w-full text-sm font-medium text-gray-900 bg-white border border-emerald-500 rounded px-2 py-1"
+                          autoFocus
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <h3 className="text-sm font-medium text-gray-900 truncate">
+                          {chat.title}
+                        </h3>
                       )}
+                      <p className="text-xs text-gray-500 truncate mt-1">
+                        {chat.last_message || "No messages yet"}
+                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-gray-400">
+                          {formatDate(chat.updated_at)}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          {chat.message_count > 0 && (
+                            <span className="text-xs text-gray-400">
+                              {chat.message_count} messages
+                            </span>
+                          )}
+                          {/* Future: SMS indicator badge */}
+                        </div>
+                      </div>
                     </div>
                   </div>
 

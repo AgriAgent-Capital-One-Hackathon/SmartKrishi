@@ -12,6 +12,7 @@ interface MessageActionsProps {
   onReadAloud?: (content: string) => void;
   onStopReading?: () => void;
   isReading?: boolean;
+  isEditable?: boolean;  // New prop to control if message can be edited
   className?: string;
 }
 
@@ -26,6 +27,7 @@ export default function MessageActions({
   onReadAloud,
   onStopReading,
   isReading = false,
+  isEditable = true,  // Default to true for backward compatibility
   className = ""
 }: MessageActionsProps) {
   const [isCopied, setIsCopied] = useState(false);
@@ -81,12 +83,12 @@ export default function MessageActions({
       </button>
 
       {isUser ? (
-        // User message actions
-        onEdit && (
+        // User message actions - Only show edit if message is editable and onEdit is provided
+        onEdit && isEditable && (
           <button
             onClick={() => onEdit(messageId)}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-all duration-200 group/tooltip relative"
-            title="Edit message"
+            title="Edit message (this will clear all responses below)"
           >
             <Edit className="w-4 h-4" />
             {/* Tooltip */}

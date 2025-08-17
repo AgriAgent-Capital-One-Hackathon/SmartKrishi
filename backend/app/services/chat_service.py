@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, and_
 from typing import List, Optional
 from uuid import UUID
 import uuid
@@ -30,13 +30,16 @@ class ChatService:
             Chat.title,
             Chat.created_at,
             Chat.updated_at,
+            Chat.is_fallback_chat,
+            Chat.fallback_phone_number,
             func.count(ChatMessage.id).label('message_count'),
             func.max(ChatMessage.content).label('last_message')
         ).outerjoin(ChatMessage).filter(
             Chat.user_id == user_id,
             Chat.is_deleted == False
         ).group_by(
-            Chat.id, Chat.title, Chat.created_at, Chat.updated_at
+            Chat.id, Chat.title, Chat.created_at, Chat.updated_at, 
+            Chat.is_fallback_chat, Chat.fallback_phone_number
         ).order_by(desc(Chat.updated_at)).offset(skip).limit(limit)
         
         results = chats_query.all()
@@ -48,7 +51,9 @@ class ChatService:
                 created_at=chat.created_at,
                 updated_at=chat.updated_at,
                 message_count=chat.message_count or 0,
-                last_message=chat.last_message or ""
+                last_message=chat.last_message or "",
+                is_fallback_chat=chat.is_fallback_chat or False,
+                fallback_phone_number=chat.fallback_phone_number
             )
             for chat in results
         ]
@@ -133,3 +138,49 @@ class ChatService:
         if len(first_message) > 50:
             title += "..."
         return title or "New Chat"
+    
+    @staticmethod
+    def get_user_normal_chats(db: Session, user_id: int, skip: int = 0, limit: int = 50) -> List[ChatSummary]:
+        """Get normal (non-fallback) chats for a user"""
+        chats_query = db.query(
+            Chat.id,
+            Chat.title,
+            Chat.created_at,
+            Chat.updated_at,
+            Chat.is_fallback_chat,
+            Chat.fallback_phone_number,
+            func.count(ChatMessage.id).label('message_count'),
+            func.max(ChatMessage.content).label('last_message')
+        ).outerjoin(ChatMessage).filter(
+            Chat.user_id == user_id,
+            Chat.is_deleted == False,
+            Chat.is_fallback_chat == False
+        ).group_by(
+            Chat.id, Chat.title, Chat.created_at, Chat.updated_at,
+            Chat.is_fallback_chat, Chat.fallback_phone_number
+        ).order_by(desc(Chat.updated_at)).offset(skip).limit(limit)
+        
+        results = chats_query.all()
+        
+        return [
+            ChatSummary(
+                id=chat.id,
+                title=chat.title,
+                created_at=chat.created_at,
+                updated_at=chat.updated_at,
+                message_count=chat.message_count or 0,
+                last_message=chat.last_message or "",
+                is_fallback_chat=chat.is_fallback_chat or False,
+                fallback_phone_number=chat.fallback_phone_number
+            )
+            for chat in results
+        ]
+    
+    @staticmethod
+    def get_message_by_id(db: Session, message_id: UUID, user_id: int) -> Optional[ChatMessage]:
+        """Get a specific message by ID"""
+        return db.query(ChatMessage).join(Chat).filter(
+            ChatMessage.id == message_id,
+            Chat.user_id == user_id,
+            Chat.is_deleted == False
+        ).first()
