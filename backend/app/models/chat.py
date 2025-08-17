@@ -12,6 +12,7 @@ class Chat(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String(255), nullable=False)
+    agent_chat_id = Column(String(255), nullable=True)  # Agent API chat ID
     is_fallback_chat = Column(Boolean, nullable=False, default=False, server_default='false')  # Indicates if this chat is from SMS fallback
     fallback_phone_number = Column(String(20), nullable=True)  # Phone used for fallback
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -42,3 +43,4 @@ class ChatMessage(Base):
     # Relationships
     chat = relationship("Chat", back_populates="messages")
     user = relationship("User")
+    reasoning_steps = relationship("ReasoningStep", back_populates="message", cascade="all, delete-orphan")

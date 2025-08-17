@@ -11,9 +11,11 @@ from alembic import context
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import your models here - Import all models to ensure they are registered
-from app.models.user import Base
+from app.models.user import User
 from app.models.chat import Chat, ChatMessage  # Import chat models
 from app.models.fallback import FallbackSession, FallbackMessage  # Import fallback models
+from app.models.reasoning import ReasoningStep, AgentApiConfig  # Import reasoning models
+from app.db.database import Base  # Import Base for metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

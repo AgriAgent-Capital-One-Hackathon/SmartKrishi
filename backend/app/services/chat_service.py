@@ -3,16 +3,22 @@ from sqlalchemy import desc, func, and_
 from typing import List, Optional
 from uuid import UUID
 import uuid
+import logging
 
 from ..models.chat import Chat, ChatMessage
 from ..models.user import User
 from ..schemas.chat import ChatCreate, ChatUpdate, ChatMessageCreate, ChatSummary
 
+logger = logging.getLogger(__name__)
+
 class ChatService:
     
     @staticmethod
-    def create_chat(db: Session, user_id: int, title: str) -> Chat:
-        """Create a new chat"""
+    async def create_chat(db: Session, user_id: int, title: str) -> Chat:
+        """Create a new chat and sync with Agent API"""
+        from .agent_api_service import AgentAPIService
+        
+        # Create local chat first
         db_chat = Chat(
             user_id=user_id,
             title=title
@@ -20,7 +26,47 @@ class ChatService:
         db.add(db_chat)
         db.commit()
         db.refresh(db_chat)
+        
+        # Create corresponding chat in Agent API
+        try:
+            agent_api = AgentAPIService()
+            agent_result = await agent_api.create_chat(str(user_id), title)
+            
+            # Save the agent chat ID
+            db_chat.agent_chat_id = agent_result.get("chat_id")
+            db.commit()
+            db.refresh(db_chat)
+            
+            logger.info(f"Created chat {db_chat.id} with agent_chat_id: {db_chat.agent_chat_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to create agent chat for {db_chat.id}: {e}")
+            # We still return the local chat, agent_chat_id will be None
+        
         return db_chat
+    
+    @staticmethod
+    async def ensure_agent_chat(db: Session, chat: Chat) -> str:
+        """Ensure a chat has an agent_chat_id, create one if missing"""
+        from .agent_api_service import AgentAPIService
+        
+        if chat.agent_chat_id:
+            return chat.agent_chat_id
+        
+        try:
+            agent_api = AgentAPIService()
+            agent_result = await agent_api.create_chat(str(chat.user_id), chat.title)
+            
+            # Save the agent chat ID
+            chat.agent_chat_id = agent_result.get("chat_id")
+            db.commit()
+            
+            logger.info(f"Created missing agent_chat_id for chat {chat.id}: {chat.agent_chat_id}")
+            return chat.agent_chat_id
+            
+        except Exception as e:
+            logger.error(f"Failed to create agent chat for existing chat {chat.id}: {e}")
+            raise e
     
     @staticmethod
     def get_user_chats(db: Session, user_id: int, skip: int = 0, limit: int = 50) -> List[ChatSummary]:
