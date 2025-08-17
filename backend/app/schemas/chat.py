@@ -42,7 +42,7 @@ class Chat(ChatBase):
     user_id: int
     created_at: datetime
     updated_at: datetime
-    is_deleted: bool
+    is_deleted: bool = False
     messages: List[ChatMessage] = []
     
     class Config:
