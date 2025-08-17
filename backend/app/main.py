@@ -4,6 +4,10 @@ from decouple import config
 import os
 import logging
 from sqlalchemy import text
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

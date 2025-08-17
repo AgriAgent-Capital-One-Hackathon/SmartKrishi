@@ -1,6 +1,7 @@
 import { X, LogOut, User, Phone, Info } from "lucide-react"
 import { useState } from "react"
 import { FallbackSettings } from "./fallback-settings"
+import { NetworkStatus } from "./network-status"
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -119,7 +120,8 @@ export default function SettingsModal({
                 </div>
               </div>
             ) : (
-              <div className="p-6">
+              <div className="p-6 space-y-6">
+                <NetworkStatus className="mb-6" />
                 <FallbackSettings />
               </div>
             )}

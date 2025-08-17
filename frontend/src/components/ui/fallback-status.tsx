@@ -41,7 +41,7 @@ export function FallbackStatus({ onOpenSettings, className }: FallbackStatusProp
 
   const loadHealth = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/fallback/health`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -66,7 +66,7 @@ export function FallbackStatus({ onOpenSettings, className }: FallbackStatusProp
 
   const deactivateFallback = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/fallback/deactivate`, {
         method: 'POST',
         headers: {

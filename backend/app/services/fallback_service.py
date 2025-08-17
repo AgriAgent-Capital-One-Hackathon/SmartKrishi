@@ -97,14 +97,21 @@ class FallbackService:
             if not user:
                 return False
             
+            # Store original phone for comparison
+            original_phone = user.fallback_phone
+            
             if "auto_fallback_enabled" in settings:
                 user.auto_fallback_enabled = settings["auto_fallback_enabled"]
             
             if "fallback_phone" in settings:
-                user.fallback_phone = settings["fallback_phone"]
-                # Reset verification if phone changes
-                if user.fallback_phone != settings["fallback_phone"]:
+                new_phone = settings["fallback_phone"]
+                user.fallback_phone = new_phone
+                # Reset verification if phone number actually changes
+                if original_phone and original_phone != new_phone:
                     user.fallback_phone_verified = False
+            
+            if "fallback_phone_verified" in settings:
+                user.fallback_phone_verified = settings["fallback_phone_verified"]
             
             if "fallback_mode" in settings:
                 user.fallback_mode = settings["fallback_mode"]
@@ -439,9 +446,17 @@ class FallbackService:
         user = db.query(User).filter(User.id == user_id).first()
         network_quality = self.network_monitor.get_network_quality(user_id)
         
+        # Handle None values by providing defaults
+        auto_fallback_enabled = False
+        fallback_active = False
+        
+        if user:
+            auto_fallback_enabled = user.auto_fallback_enabled if user.auto_fallback_enabled is not None else False
+            fallback_active = user.fallback_active if user.fallback_active is not None else False
+        
         return FallbackHealthStatus(
-            auto_fallback_enabled=user.auto_fallback_enabled if user else False,
-            fallback_active=user.fallback_active if user else False,
+            auto_fallback_enabled=auto_fallback_enabled,
+            fallback_active=fallback_active,
             network_quality=network_quality,
             last_network_check=datetime.utcnow()
         )

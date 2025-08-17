@@ -5,7 +5,6 @@ import Message from "@/components/ui/message"
 import Navbar from "@/components/ui/navbar"
 import HistoryDrawer from "@/components/ui/history-drawer"
 import SettingsModal from "@/components/ui/settings-modal"
-import { FallbackStatus } from "@/components/ui/fallback-status"
 import { FallbackSettings } from "@/components/ui/fallback-settings"
 import { 
   Leaf, 
@@ -13,8 +12,7 @@ import {
   Bug, 
   DollarSign,
   Sparkles,
-  ChevronRight,
-  Phone
+  ChevronRight
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
@@ -336,23 +334,6 @@ return (
           </div>
         ) : (
           <>
-            {/* Chat Header with SMS Fallback Status */}
-            <div className="flex-shrink-0 border-b bg-white/80 backdrop-blur-sm">
-              <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-800">Chat</h2>
-                <div className="flex items-center gap-2">
-                  <FallbackStatus onOpenSettings={() => setShowFallbackSettings(true)} />
-                  <button
-                    onClick={() => setShowFallbackSettings(true)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="SMS Fallback Settings"
-                  >
-                    <Phone className="h-4 w-4 text-gray-600" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            
             <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-green-50 to-white">
               <div className="w-full">
                 {messages.map((msg) => (
