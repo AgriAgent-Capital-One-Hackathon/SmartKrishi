@@ -1,29 +1,23 @@
 import React, { useState, useLayoutEffect, useRef, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import ChatInput from "@/components/ui/chat-input"
-import Message from "@/components/ui/message"
+import { EnhancedMessage } from "../components/ui/enhanced-message";
 import Navbar from "@/components/ui/navbar"
 import HistoryDrawer from "@/components/ui/history-drawer"
 import SettingsModal from "@/components/ui/settings-modal"
 import { FallbackSettings } from "@/components/ui/fallback-settings"
-import { AIReasoningPanel } from "@/components/ui/ai-reasoning-panel"
-import { StreamingStatusIndicator } from "@/components/ui/streaming-status-indicator"
 import { 
   Leaf, 
   Sun, 
   Bug, 
   DollarSign,
-  Sparkles,
-  ChevronRight,
-  Brain,
-  ChevronLeft
+  Sparkles
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authService } from "@/services/auth"
 import { chatService } from '../services/chatService';
 import { useStreamingChat } from '../hooks/useStreamingChat';
-import { useReasoning } from '../hooks/useReasoning';
 import type { ChatMessage } from '../services/chatService';
 
 interface SuggestionCard {
@@ -67,13 +61,10 @@ export default function DashboardPage() {
   const { user, logout } = useAuthStore()
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // New streaming and reasoning hooks
-  const reasoning = useReasoning();
-  
+  // New streaming hook
   const streaming = useStreamingChat({
     onNewMessage: (msg) => {
       setMessages(prev => [...prev, msg]);
-      reasoning.clearReasoning(); // Clear previous reasoning when new conversation starts
     },
     onMessageUpdate: (msg) => {
       setMessages(prev => {
@@ -85,12 +76,6 @@ export default function DashboardPage() {
         }
         return [...prev, msg];
       });
-    },
-    onReasoningUpdate: (messageId, steps) => {
-      reasoning.updateReasoningSteps(steps);
-    },
-    onStatusUpdate: (status) => {
-      // Status is handled by the streaming hook
     },
     onError: (error) => {
       console.error('Streaming error:', error);
@@ -166,8 +151,6 @@ export default function DashboardPage() {
     setCurrentChatId(null);
     setShowSuggestions(true);
     setReadingMessageId(null);
-    reasoning.clearReasoning();
-    reasoning.isVisible && reasoning.toggleVisibility(); // Hide reasoning panel for new chats
   };
 
   const handleChatSelect = async (chatId: string) => {
@@ -182,9 +165,6 @@ export default function DashboardPage() {
       setMessages(chatMessages);
       setCurrentChatId(chatId);
       setShowSuggestions(chatMessages.length === 0);
-      
-      // Load reasoning for the chat
-      reasoning.loadChatReasoning(chatId);
     } catch (error) {
       console.error('Failed to load chat:', error);
     }
@@ -295,12 +275,6 @@ export default function DashboardPage() {
           }
         );
       }
-
-      // Update chat ID if this was a new conversation
-      if (!currentChatId && streaming.currentMessageId) {
-        // We'll get the chat ID from the streaming response
-        // This will be handled by the streaming events
-      }
     } catch (error) {
       console.error('Failed to send message:', error);
     }
@@ -316,119 +290,73 @@ return (
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex h-screen">
-        <main className="flex-1 flex flex-col bg-gradient-to-br from-gray-50 via-green-50 to-white">
-          {showSuggestions ? (
-            <div className="flex-1 overflow-y-auto p-8">
-              <div className="flex flex-col items-center justify-center min-h-full animate-fadeIn">
-                <div className="text-center max-w-2xl mb-8">
-                  <div className="mb-4">
-                    <span className="text-6xl drop-shadow-sm">🌱</span>
-                  </div>
-                  <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                    Welcome to <span className="bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">SmartKrishi</span>
-                  </h1>
-                  <p className="text-lg text-gray-600">
-                    Your AI-powered farming assistant with advanced reasoning. Ask me anything about agriculture, crops, or farming techniques.
-                  </p>
+      <div className="flex-1 flex flex-col bg-gradient-to-br from-gray-50 via-green-50 to-white">
+        {showSuggestions ? (
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex flex-col items-center justify-center min-h-full animate-fadeIn">
+              <div className="text-center max-w-2xl mb-8">
+                <div className="mb-4">
+                  <span className="text-6xl drop-shadow-sm">🌱</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
-                  {suggestionCards.map((card) => (
-                    <Card 
-                      key={card.id}
-                      className="cursor-pointer backdrop-blur-lg bg-white/70 border border-green-100 hover:border-green-300 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 rounded-xl"
-                      onClick={() => handleSuggestionClick(card.prompt)}
-                    >
-                      <CardContent className="p-6 flex items-center space-x-4">
-                        <div className="flex-shrink-0">{card.icon}</div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800 mb-1">{card.text}</h3>
-                          <p className="text-sm text-gray-600 line-clamp-2">{card.prompt}</p>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                  Welcome to <span className="bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">SmartKrishi</span>
+                </h1>
+                <p className="text-lg text-gray-600">
+                  Your AI-powered farming assistant with advanced reasoning. Ask me anything about agriculture, crops, or farming techniques.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
+                {suggestionCards.map((card) => (
+                  <Card 
+                    key={card.id}
+                    className="cursor-pointer backdrop-blur-lg bg-white/70 border border-green-100 hover:border-green-300 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 rounded-xl"
+                    onClick={() => handleSuggestionClick(card.prompt)}
+                  >
+                    <CardContent className="p-6 flex items-center space-x-4">
+                      <div className="flex-shrink-0">{card.icon}</div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-800 mb-1">{card.text}</h3>
+                        <p className="text-sm text-gray-600 line-clamp-2">{card.prompt}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
-                <div className="flex items-center space-x-4">
-                  <StreamingStatusIndicator status={streaming.currentStatus} />
-                </div>
-                <button
-                  onClick={reasoning.toggleVisibility}
-                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-colors ${
-                    reasoning.isVisible 
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                      : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
-                  }`}
-                  title="Toggle AI Reasoning Panel"
-                >
-                  <Brain className="w-4 h-4" />
-                  <span className="text-sm font-medium">AI Reasoning</span>
-                  {reasoning.isVisible ? (
-                    <ChevronRight className="w-4 h-4" />
-                  ) : (
-                    <ChevronLeft className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-green-50 to-white">
-                <div className="w-full">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className="w-full py-4"
-                    >
-                      <div className="max-w-4xl mx-auto px-6 animate-fadeIn">
-                        <Message 
-                          id={msg.id}
-                          role={msg.role}
-                          content={msg.content}
-                          timestamp={msg.timestamp}
-                          onCopy={handleCopyMessage}
-                          onEdit={handleEditMessage}
-                          onLike={handleLikeMessage}
-                          onDislike={handleDislikeMessage}
-                          onReadAloud={(content) => handleReadAloud(content, msg.id)}
-                          onStopReading={handleStopReading}
-                          isReading={readingMessageId === msg.id}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  
-                  <div ref={messagesEndRef} style={{ height: '1px' }} />
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Fixed Chat Input at Bottom */}
-          <div className="flex-shrink-0 bg-transparent border-none">
-            <ChatInput
-              value={message}
-              onChange={setMessage}
-              onSend={handleSendMessage}
-              onFileUpload={handleFileUpload}
-              selectedFiles={selectedFiles}
-              onFileRemove={handleFileRemove}
-              disabled={streaming.isStreaming}
-            />
           </div>
-        </main>
+        ) : (
+          <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-green-50 to-white">
+            <div className="w-full max-w-4xl mx-auto px-6">
+              {messages.map((msg) => (
+                <EnhancedMessage
+                  key={msg.id}
+                  message={msg}
+                  onCopy={handleCopyMessage}
+                  onEdit={handleEditMessage}
+                  onLike={handleLikeMessage}
+                  onDislike={handleDislikeMessage}
+                  onReadAloud={(content: string, messageId: string) => handleReadAloud(content, messageId)}
+                  onStopReading={handleStopReading}
+                  isReading={readingMessageId === msg.id}
+                />
+              ))}
+              <div ref={messagesEndRef} style={{ height: '1px' }} />
+            </div>
+          </div>
+        )}
 
-        {/* AI Reasoning Panel */}
-        <AIReasoningPanel
-          reasoningSteps={reasoning.steps}
-          isVisible={reasoning.isVisible}
-          onToggle={reasoning.toggleVisibility}
-          isLoading={reasoning.isLoading}
-        />
+        {/* Fixed Chat Input at Bottom */}
+        <div className="flex-shrink-0 bg-transparent border-none">
+          <ChatInput
+            value={message}
+            onChange={setMessage}
+            onSend={handleSendMessage}
+            onFileUpload={handleFileUpload}
+            selectedFiles={selectedFiles}
+            onFileRemove={handleFileRemove}
+            disabled={streaming.isStreaming}
+          />
+        </div>
       </div>
 
       {/* Drawers & Modals */}

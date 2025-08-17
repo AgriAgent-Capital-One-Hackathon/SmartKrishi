@@ -169,38 +169,16 @@ export const useStreamingChat = ({
         case 'log':
         case 'plan':
         case 'thinking':
-        case 'tool_call':
         case 'code_execution':
-        case 'google_search_call':
-        case 'google_search_response':
-        case 'grounding_web_search_queries':
-        case 'grounding_chunks':
-        case 'grounding_supports':
-          // Add reasoning step for all these event types
+          // Add reasoning step
           const reasoningStep: ReasoningStep = {
             id: `${Date.now()}-${Math.random()}`,
             step_type: event.type,
             step_order: currentMessage.reasoningSteps.length,
-            content: event.content || event.message || '',
-            // Handle specific fields for each event type
-            stage: event.stage,
-            message: event.message,
-            plan: event.plan,
-            raw_response: event.raw_response,
-            tool: event.tool,
+            content: event.content || event.message || JSON.stringify(event.plan || event.thought || event),
             tool_name: event.tool,
-            tool_args: typeof event.args === 'string' ? event.args : JSON.stringify(event.args || ''),
+            tool_args: event.args,
             tool_result: event.result,
-            code: event.code,
-            language: event.language,
-            outcome: event.outcome,
-            result: event.result,
-            query: event.query,
-            queries: event.queries,
-            sources: event.sources,
-            supports: event.supports,
-            results: event.results,
-            error: event.error,
             step_metadata: event,
             created_at: new Date().toISOString()
           };
@@ -214,7 +192,7 @@ export const useStreamingChat = ({
             role: 'assistant',
             content: '',
             timestamp: new Date(),
-            reasoning_steps: [...currentMessage.reasoningSteps], // Create new array for updates
+            reasoning_steps: currentMessage.reasoningSteps,
             is_thinking: true,
             is_streaming: false
           };
@@ -233,7 +211,7 @@ export const useStreamingChat = ({
             role: 'assistant',
             content: currentMessage.accumulatedContent,
             timestamp: new Date(),
-            reasoning_steps: [...currentMessage.reasoningSteps],
+            reasoning_steps: currentMessage.reasoningSteps,
             is_thinking: false,
             is_streaming: true
           };
@@ -241,65 +219,19 @@ export const useStreamingChat = ({
           onMessageUpdate?.(streamingMessage);
           break;
 
-        case 'response':
-          // Complete response received (alternative to response_chunk + end)
-          currentMessage.isThinking = false;
-          currentMessage.isStreaming = false;
-          
-          const completeMessage: ChatMessage = {
-            id: messageId,
-            role: 'assistant',
-            content: event.response || event.content || currentMessage.accumulatedContent,
-            timestamp: new Date(),
-            reasoning_steps: [...currentMessage.reasoningSteps],
-            is_thinking: false,
-            is_streaming: false
-          };
-          
-          onMessageUpdate?.(completeMessage);
-          break;
-
-        case 'error':
-          // Add error as reasoning step and handle error
-          const errorStep: ReasoningStep = {
-            id: `${Date.now()}-${Math.random()}`,
-            step_type: 'error',
-            step_order: currentMessage.reasoningSteps.length,
-            content: event.message || event.error || 'An error occurred',
-            error: event.message || event.error,
-            step_metadata: event,
-            created_at: new Date().toISOString()
-          };
-
-          currentMessage.reasoningSteps.push(errorStep);
-          
-          const errorMessage: ChatMessage = {
-            id: messageId,
-            role: 'assistant',
-            content: 'I encountered an error while processing your request.',
-            timestamp: new Date(),
-            reasoning_steps: [...currentMessage.reasoningSteps],
-            is_thinking: false,
-            is_streaming: false
-          };
-          
-          onMessageUpdate?.(errorMessage);
-          onError?.(event.error || event.message || 'Unknown streaming error');
-          break;
-
         case 'end':
           // Finalize message
           currentMessage.isThinking = false;
           currentMessage.isStreaming = false;
           
-          const finalContent = event.final_content || event.response || currentMessage.accumulatedContent;
+          const finalContent = event.final_content || currentMessage.accumulatedContent;
           
           const finalMessage: ChatMessage = {
             id: messageId,
             role: 'assistant',
             content: finalContent,
             timestamp: new Date(),
-            reasoning_steps: [...currentMessage.reasoningSteps],
+            reasoning_steps: currentMessage.reasoningSteps,
             is_thinking: false,
             is_streaming: false
           };
@@ -308,33 +240,9 @@ export const useStreamingChat = ({
           newStreamingMessages.delete(messageId); // Clean up
           break;
 
-        default:
-          // Handle any other event types as reasoning steps
-          if (event.type && event.type !== 'end') {
-            const genericStep: ReasoningStep = {
-              id: `${Date.now()}-${Math.random()}`,
-              step_type: event.type,
-              step_order: currentMessage.reasoningSteps.length,
-              content: event.content || event.message || `${event.type} event`,
-              step_metadata: event,
-              created_at: new Date().toISOString()
-            };
-
-            currentMessage.reasoningSteps.push(genericStep);
-            currentMessage.isThinking = true;
-            
-            const genericMessage: ChatMessage = {
-              id: messageId,
-              role: 'assistant',
-              content: currentMessage.accumulatedContent,
-              timestamp: new Date(),
-              reasoning_steps: [...currentMessage.reasoningSteps],
-              is_thinking: true,
-              is_streaming: false
-            };
-            
-            onMessageUpdate?.(genericMessage);
-          }
+        case 'error':
+          onError?.(event.error || 'Unknown streaming error');
+          newStreamingMessages.delete(messageId);
           break;
       }
 

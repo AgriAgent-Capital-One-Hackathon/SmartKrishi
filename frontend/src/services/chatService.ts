@@ -7,6 +7,10 @@ export interface ChatMessage {
   id: string;
   message_type?: string;
   file_url?: string;
+  // New fields for reasoning integration
+  reasoning_steps?: ReasoningStep[];
+  is_streaming?: boolean;
+  is_thinking?: boolean;
 }
 
 export interface ChatResponse {
@@ -52,11 +56,35 @@ export interface ReasoningStep {
   step_order: number;
   stage?: string;
   content?: string;
+  message?: string;
   tool_name?: string;
+  tool?: string;
   tool_args?: string;
   tool_result?: any;
   step_metadata?: any;
   created_at: string;
+  
+  // Plan event fields
+  plan?: any;
+  raw_response?: string;
+  
+  // Code execution fields
+  code?: string;
+  language?: string;
+  outcome?: 'success' | 'error';
+  result?: string;
+  
+  // Search fields
+  query?: string;
+  queries?: string[];
+  results?: any;
+  
+  // Grounding fields
+  sources?: any[];
+  supports?: any[];
+  
+  // Error fields
+  error?: string;
 }
 
 export interface StreamingEvent {
@@ -68,15 +96,42 @@ export interface StreamingEvent {
   chat_id?: string;
   status?: StreamingStatus;
   error?: string;
-  // Agent API specific fields
-  plan?: string;
-  thought?: string;
+  
+  // Log event fields
+  stage?: string;
+  
+  // Plan event fields
+  plan?: any;
+  raw_response?: string;
+  
+  // Tool call fields
   tool?: string;
   args?: any;
   result?: any;
+  
+  // Code execution fields
   code?: string;
-  url?: string;
+  language?: string;
+  outcome?: 'success' | 'error';
+  
+  // Search fields
+  query?: string;
+  queries?: string[];
+  results?: any;
+  
+  // Grounding fields
+  sources?: any[];
+  supports?: any[];
+  
+  // Response fields
+  response?: string;
+  grounding_metadata?: any;
   final_content?: string;
+  
+  // Legacy fields
+  thought?: string;
+  url?: string;
+  
   // Allow any additional fields from the Agent API
   [key: string]: any;
 }
