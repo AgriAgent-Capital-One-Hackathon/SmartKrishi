@@ -2,6 +2,14 @@
 
 A comprehensive full-stack platform providing intelligent agricultural guidance through AI-powered chat, real-time assistance, and advanced farming insights.
 
+## Demo Video
+
+[![Youtube Video](SmartKrishi_yt.jpg)](https://youtu.be/mJtN4lrSehI)
+
+## [Presentation](https://drive.google.com/file/d/1LcKkQIvkNKGH32kqnbh9hwdn3twSZL6l/view)
+
+## [Long-form Synopsis](https://drive.google.com/file/d/1iOjhhgOHIbOHAgGFZnd5iEsVGjAlIhVT/view)
+
 ## 🌾 Overview
 
 SmartKrishi is a modern agricultural assistant that combines cutting-edge AI technology with practical farming knowledge. The platform provides farmers with instant access to agricultural expertise, crop management advice, weather insights, and farming best practices through an intuitive chat interface.
