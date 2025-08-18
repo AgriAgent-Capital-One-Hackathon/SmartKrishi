@@ -11,6 +11,7 @@ interface UseStreamingChatProps {
   onMessageUpdate?: (message: ChatMessage) => void;
   onNewMessage?: (message: ChatMessage) => void;
   onError?: (error: string) => void;
+  onChatCreated?: (chatId: string) => void;
 }
 
 interface MessageStreamingState {
@@ -30,7 +31,8 @@ interface StreamingState {
 export const useStreamingChat = ({
   onMessageUpdate,
   onNewMessage,
-  onError
+  onError,
+  onChatCreated
 }: UseStreamingChatProps = {}) => {
   const [state, setState] = useState<StreamingState>({
     isStreaming: false,
@@ -99,7 +101,7 @@ export const useStreamingChat = ({
 
       onError?.(errorMessage);
     }
-  }, [onMessageUpdate, onNewMessage, onError]);
+  }, [onMessageUpdate, onNewMessage, onError, onChatCreated]);
 
   const uploadFileWithStreaming = useCallback(async (
     file: File,
@@ -147,7 +149,74 @@ export const useStreamingChat = ({
 
       onError?.(errorMessage);
     }
-  }, [onMessageUpdate, onNewMessage, onError]);
+  }, [onMessageUpdate, onNewMessage, onError, onChatCreated]);
+
+  // Helper function to update status from log stage
+  const updateStatusFromLogStage = useCallback((stage: string) => {
+    const statusMap: Record<string, StreamingStatus> = {
+      'initialization': { status: 'initializing', current_step: 'initialization' },
+      'planner_start': { status: 'planning', current_step: 'planner_start' },
+      'planner_input': { status: 'planning', current_step: 'planner_input' },
+      'planner_complete': { status: 'planning', current_step: 'planner_complete' },
+      'tools_start': { status: 'thinking', current_step: 'tools_start' },
+      'tool_executing': { status: 'thinking', current_step: 'tool_executing' },
+      'tools_complete': { status: 'thinking', current_step: 'tools_complete' },
+      'agent_start': { status: 'thinking', current_step: 'agent_start' },
+      'file_check': { status: 'thinking', current_step: 'file_check' },
+      'agent_prompt_ready': { status: 'thinking', current_step: 'agent_prompt_ready' },
+      'complete': { status: 'complete', current_step: 'complete' }
+    };
+    
+    const newStatus = statusMap[stage];
+    if (newStatus) {
+      setState(prev => ({
+        ...prev,
+        currentStatus: newStatus
+      }));
+    }
+  }, []);
+
+  // Helper function to add reasoning step with duplicate detection
+  const addReasoningStep = useCallback((
+    messageId: string,
+    currentMessage: MessageStreamingState,
+    step: Partial<ReasoningStep>
+  ): boolean => {
+    // Simple duplicate detection - check if same step type and content already exists
+    const isDuplicate = currentMessage.reasoningSteps.some(existingStep => 
+      existingStep.step_type === step.step_type && 
+      existingStep.content === step.content &&
+      Math.abs(existingStep.step_order - currentMessage.reasoningSteps.length) <= 1
+    );
+    
+    if (!isDuplicate && step.content && step.content.trim() !== '') {
+      const reasoningStep: ReasoningStep = {
+        id: `${Date.now()}-${Math.random()}`,
+        step_order: currentMessage.reasoningSteps.length,
+        created_at: new Date().toISOString(),
+        ...step
+      } as ReasoningStep;
+
+      currentMessage.reasoningSteps.push(reasoningStep);
+      currentMessage.isThinking = true;
+      
+      // Update the thinking message
+      const thinkingMessage: ChatMessage = {
+        id: messageId,
+        role: 'assistant',
+        content: currentMessage.accumulatedContent,
+        timestamp: new Date(),
+        reasoning_steps: [...currentMessage.reasoningSteps],
+        is_thinking: true,
+        is_streaming: false
+      };
+      
+      onMessageUpdate?.(thinkingMessage);
+      return true;
+    }
+    
+    return false;
+  }, [onMessageUpdate]);
 
   const handleStreamingEvent = useCallback(async (event: StreamingEvent) => {
     console.log('🎭 Agent API Event:', event.type, event);
@@ -167,83 +236,108 @@ export const useStreamingChat = ({
 
       switch (event.type) {
         case 'log':
-          // Skip log events completely
+          // Use log events for status updates instead of skipping
+          if (event.stage) {
+            updateStatusFromLogStage(event.stage);
+          }
           break;
           
         case 'plan':
-        case 'thinking':
-        case 'tool_call':
-        case 'code_execution':
-        case 'google_search_call':
-        case 'google_search_response':
-        case 'grounding_web_search_queries':
-        case 'grounding_chunks':
-        case 'grounding_supports':
-        case 'web_search':
-        case 'search':
-        case 'code':
-        case 'execution':
-          // Add reasoning step for other event types
-          // Enhanced duplicate detection
-          const eventContent = event.content || event.message || '';
-          
-          // Skip empty content
-          if (eventContent.trim() === '') {
-            break;
-          }
-          
-          const eventKey = `${event.type}-${eventContent}-${event.stage || ''}-${event.tool || ''}-${event.query || ''}-${event.step_order || currentMessage.reasoningSteps.length}`;
-          
-          const isDuplicate = currentMessage.reasoningSteps.some(step => {
-            const stepKey = `${step.step_type}-${step.content}-${step.stage || ''}-${step.tool || ''}-${step.query || ''}-${step.step_order}`;
-            return stepKey === eventKey || (step.content === eventContent && step.step_type === event.type);
+          addReasoningStep(messageId, currentMessage, {
+            step_type: 'plan',
+            content: `Planning: ${event.plan?.primary_intent || 'Creating strategy'}`,
+            plan: event.plan,
+            raw_response: event.raw_response,
+            stage: event.stage
           });
+          break;
           
-          if (!isDuplicate) {
-            const reasoningStep: ReasoningStep = {
-              id: `${Date.now()}-${Math.random()}`,
-              step_type: event.type,
-              step_order: currentMessage.reasoningSteps.length,
-              content: eventContent,
-              // Handle specific fields for each event type
-              stage: event.stage,
-              message: event.message,
-              plan: event.plan,
-              raw_response: event.raw_response,
-              tool: event.tool,
-              tool_name: event.tool,
-              tool_args: typeof event.args === 'string' ? event.args : JSON.stringify(event.args || ''),
-              tool_result: event.result,
+        case 'thinking':
+          addReasoningStep(messageId, currentMessage, {
+            step_type: 'thinking',
+            content: event.content || '',
+            stage: event.stage
+          });
+          break;
+          
+        case 'tool_call':
+          addReasoningStep(messageId, currentMessage, {
+            step_type: 'tool_call',
+            content: `Using ${event.tool || 'tool'}`,
+            tool_name: event.tool,
+            tool: event.tool,
+            tool_args: typeof event.args === 'string' ? event.args : JSON.stringify(event.args || ''),
+            tool_result: event.result,
+            stage: event.stage
+          });
+          break;
+          
+        case 'code_execution':
+          if (event.stage === 'code') {
+            addReasoningStep(messageId, currentMessage, {
+              step_type: 'code_execution',
+              content: `Executing: ${event.language || 'code'}`,
               code: event.code,
               language: event.language,
-              outcome: event.outcome,
+              stage: 'code'
+            });
+          } else if (event.stage === 'result') {
+            addReasoningStep(messageId, currentMessage, {
+              step_type: 'code_execution',
+              content: `Result: ${event.outcome || 'success'}`,
               result: event.result,
-              query: event.query,
-              queries: event.queries,
-              sources: event.sources,
-              supports: event.supports,
-              results: event.results,
-              error: event.error,
-              step_metadata: event,
-              created_at: new Date().toISOString()
-            };
-
-            currentMessage.reasoningSteps.push(reasoningStep);
-            currentMessage.isThinking = true;
-            
-            // Update the thinking message
-            const thinkingMessage: ChatMessage = {
-              id: messageId,
-              role: 'assistant',
-              content: '',
-              timestamp: new Date(),
-              reasoning_steps: [...currentMessage.reasoningSteps],
-              is_thinking: true,
-              is_streaming: false
-            };
-            
-            onMessageUpdate?.(thinkingMessage);
+              outcome: event.outcome || 'success',
+              language: event.language, // Preserve language from code stage
+              stage: 'result'
+            });
           }
+          break;
+          
+        case 'google_search_call':
+          addReasoningStep(messageId, currentMessage, {
+            step_type: 'google_search_call',
+            content: `Searching: ${event.query || 'web search'}`,
+            query: event.query,
+            stage: event.stage
+          });
+          break;
+          
+        case 'google_search_response':
+          addReasoningStep(messageId, currentMessage, {
+            step_type: 'google_search_response',
+            content: 'Search results received',
+            results: event.results,
+            stage: event.stage
+          });
+          break;
+          
+        case 'grounding_web_search_queries':
+          addReasoningStep(messageId, currentMessage, {
+            step_type: 'grounding_web_search_queries',
+            content: `Web searches: ${event.queries?.join(', ') || 'web queries'}`,
+            queries: event.queries,
+            stage: event.stage
+          });
+          break;
+          
+        case 'grounding_chunks':
+          addReasoningStep(messageId, currentMessage, {
+            step_type: 'grounding_chunks',
+            content: `Sources: ${event.sources?.length || 0} references`,
+            sources: event.sources,
+            stage: event.stage
+          });
+          break;
+          
+        case 'grounding_supports':
+          addReasoningStep(messageId, currentMessage, {
+            step_type: 'grounding_supports',
+            content: 'Citations linked',
+            supports: event.supports,
+            stage: event.stage
+          });
+          break;
+
           break;
 
         case 'response_chunk':
@@ -277,7 +371,8 @@ export const useStreamingChat = ({
             timestamp: new Date(),
             reasoning_steps: [...currentMessage.reasoningSteps],
             is_thinking: false,
-            is_streaming: false
+            is_streaming: false,
+            grounding_metadata: event.grounding_metadata
           };
           
           onMessageUpdate?.(completeMessage);
@@ -285,17 +380,11 @@ export const useStreamingChat = ({
 
         case 'error':
           // Add error as reasoning step and handle error
-          const errorStep: ReasoningStep = {
-            id: `${Date.now()}-${Math.random()}`,
+          addReasoningStep(messageId, currentMessage, {
             step_type: 'error',
-            step_order: currentMessage.reasoningSteps.length,
             content: event.message || event.error || 'An error occurred',
-            error: event.message || event.error,
-            step_metadata: event,
-            created_at: new Date().toISOString()
-          };
-
-          currentMessage.reasoningSteps.push(errorStep);
+            error: event.message || event.error
+          });
           
           const errorMessage: ChatMessage = {
             id: messageId,
@@ -328,51 +417,21 @@ export const useStreamingChat = ({
             is_streaming: false
           };
           
+          // Update existing message instead of creating a new one to avoid duplicates
           onMessageUpdate?.(finalMessage);
+          
+          // Notify about chat creation if this was a new chat
+          if (event.chat_id && onChatCreated) {
+            console.log('🔥 End event received with chat_id:', event.chat_id);
+            onChatCreated(event.chat_id);
+          }
+          
           newStreamingMessages.delete(messageId); // Clean up
           break;
 
         default:
-          // Handle any other event types as reasoning steps, but filter out response-related events
-          if (event.type && 
-              event.type !== 'end' && 
-              event.type !== 'response' && 
-              event.type !== 'response_chunk' &&
-              event.type !== 'log') {
-            const eventContent = event.content || event.message || '';
-            if (eventContent.trim() !== '') {
-              const genericStep: ReasoningStep = {
-                id: `${Date.now()}-${Math.random()}`,
-                step_type: event.type,
-                step_order: currentMessage.reasoningSteps.length,
-                content: eventContent,
-                step_metadata: event,
-                created_at: new Date().toISOString()
-              };
-
-              // Check for duplicates before adding
-              const isDuplicate = currentMessage.reasoningSteps.some(step => 
-                step.content === eventContent && step.step_type === event.type
-              );
-
-              if (!isDuplicate) {
-                currentMessage.reasoningSteps.push(genericStep);
-                currentMessage.isThinking = true;
-                
-                const genericMessage: ChatMessage = {
-                  id: messageId,
-                  role: 'assistant',
-                  content: currentMessage.accumulatedContent,
-                  timestamp: new Date(),
-                  reasoning_steps: [...currentMessage.reasoningSteps],
-                  is_thinking: true,
-                  is_streaming: false
-                };
-                
-                onMessageUpdate?.(genericMessage);
-              }
-            }
-          }
+          // Handle any unknown event types by logging them but not processing
+          console.warn('Unknown event type received:', event.type, event);
           break;
       }
 
@@ -383,7 +442,7 @@ export const useStreamingChat = ({
         streamingMessages: newStreamingMessages
       };
     });
-  }, [onMessageUpdate, onError]);
+  }, [onMessageUpdate, onError, onChatCreated, updateStatusFromLogStage, addReasoningStep]);
 
   const stopStreaming = useCallback(() => {
     if (abortController.current) {

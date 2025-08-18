@@ -18,6 +18,7 @@ import { useAuthStore } from "@/store/authStore"
 import { authService } from "@/services/auth"
 import { chatService } from '../services/chatService';
 import { useStreamingChat } from '../hooks/useStreamingChat';
+import { useReasoning } from '../hooks/useReasoning';
 import type { ChatMessage } from '../services/chatService';
 
 interface SuggestionCard {
@@ -61,6 +62,9 @@ export default function DashboardPage() {
   const { user, logout } = useAuthStore()
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Initialize reasoning hook
+  const reasoning = useReasoning();
+
   // New streaming hook
   const streaming = useStreamingChat({
     onNewMessage: (msg) => {
@@ -84,6 +88,11 @@ export default function DashboardPage() {
         // If message doesn't exist, add it (could be from streaming)
         return [...prev, msg];
       });
+      
+      // Update reasoning hook with new reasoning steps
+      if (msg.reasoning_steps && msg.reasoning_steps.length > 0) {
+        reasoning.updateReasoningSteps(msg.reasoning_steps);
+      }
     },
     onError: (error) => {
       console.error('Streaming error:', error);
@@ -93,6 +102,10 @@ export default function DashboardPage() {
         content: `Sorry, I encountered an error: ${error}`,
         timestamp: new Date()
       }]);
+    },
+    onChatCreated: (chatId) => {
+      console.log('🔄 Chat created/updated with ID:', chatId, 'Current chatId:', currentChatId);
+      setCurrentChatId(chatId);
     }
   });
 
@@ -161,12 +174,18 @@ export default function DashboardPage() {
     setCurrentChatId(null);
     setShowSuggestions(true);
     setReadingMessageId(null);
+    
+    // Clear reasoning state for new chat
+    reasoning.clearReasoning();
   };
 
   const handleChatSelect = async (chatId: string) => {
     try {
       // Stop any ongoing streaming
       streaming.stopStreaming();
+      
+      // Clear reasoning state when switching chats
+      reasoning.clearReasoning();
       
       const chat = await chatService.getChat(chatId);
       // Convert backend message format to frontend format with reasoning steps
@@ -208,6 +227,13 @@ export default function DashboardPage() {
       setMessages(chatMessages);
       setCurrentChatId(chatId);
       setShowSuggestions(chatMessages.length === 0);
+      
+      // Load reasoning for this chat to sync the reasoning hook
+      try {
+        await reasoning.loadChatReasoning(chatId);
+      } catch (error) {
+        console.warn('Could not load chat reasoning:', error);
+      }
     } catch (error) {
       console.error('Failed to load chat:', error);
     }
@@ -297,6 +323,7 @@ export default function DashboardPage() {
     if ((!message.trim() && selectedFiles.length === 0) || streaming.isStreaming) return;
 
     const messageText = message.trim();
+    console.log('📤 Sending message with chatId:', currentChatId);
     setMessage('');
     setShowSuggestions(false);
 

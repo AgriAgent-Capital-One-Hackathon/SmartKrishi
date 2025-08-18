@@ -11,6 +11,12 @@ export interface ChatMessage {
   reasoning_steps?: ReasoningStep[];
   is_streaming?: boolean;
   is_thinking?: boolean;
+  // Grounding metadata from Agent API
+  grounding_metadata?: {
+    web_search_queries?: string[];
+    grounding_chunks?: any[];
+    grounding_supports?: any[];
+  };
 }
 
 export interface ChatResponse {
