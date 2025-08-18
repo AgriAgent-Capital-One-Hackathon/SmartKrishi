@@ -10,6 +10,11 @@ export interface UploadedFile {
   agent_file_id?: string;
   summary?: string;
   created_at: string;
+  user_id?: number;
+  chat_id?: string;
+  message_id?: string;
+  updated_at?: string;
+  is_deleted?: boolean;
 }
 
 export interface FileUploadResponse {
@@ -75,6 +80,7 @@ export interface Chat {
     message_type: string;
     file_url?: string;
     created_at: string;
+    files?: UploadedFile[]; // Add files field to support file attachments
     reasoning_steps?: Array<{
       id: string;
       step_type: string;

@@ -192,36 +192,36 @@ export default function DashboardPage() {
       const chatMessages: ChatMessage[] = chat.messages
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // Ensure proper ordering
         .map(msg => ({
-          id: msg.id,
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-          timestamp: new Date(msg.created_at),
+            id: msg.id,
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: new Date(msg.created_at),
           // Include reasoning steps if they exist and filter out non-reasoning content
-          reasoning_steps: msg.reasoning_steps
-            ?.filter((step: any) => 
+            reasoning_steps: msg.reasoning_steps
+              ?.filter((step: any) => 
               // Only include actual reasoning steps, not response chunks or final responses
-              step.step_type && 
-              step.step_type !== 'response_chunk' && 
-              step.step_type !== 'response' && 
-              step.step_type !== 'end' &&
+                step.step_type && 
+                step.step_type !== 'response_chunk' && 
+                step.step_type !== 'response' && 
+                step.step_type !== 'end' &&
               step.step_type !== 'log' &&  // Filter out log events
-              step.content && 
-              step.content.trim() !== ''
-            )
-            ?.map((step: any) => ({
-              id: step.id,
-              step_type: step.step_type,
-              step_order: step.step_order,
-              stage: step.stage,
-              content: step.content,
-              message: step.content,
-              tool_name: step.tool_name,
-              tool: step.tool_name,
-              tool_args: step.tool_args,
-              tool_result: step.tool_result,
-              step_metadata: step.step_metadata,
-              created_at: step.created_at
-            })) || []
+                step.content && 
+                step.content.trim() !== ''
+              )
+              ?.map((step: any) => ({
+                id: step.id,
+                step_type: step.step_type,
+                step_order: step.step_order,
+                stage: step.stage,
+                content: step.content,
+                message: step.content,
+                tool_name: step.tool_name,
+                tool: step.tool_name,
+                tool_args: step.tool_args,
+                tool_result: step.tool_result,
+                step_metadata: step.step_metadata,
+                created_at: step.created_at
+              })) || []
         }));
       
       setMessages(chatMessages);
@@ -393,18 +393,8 @@ export default function DashboardPage() {
         
         await streaming.uploadFileWithStreaming(filesToUpload, promptText, currentChatId || undefined, true);
       } else {
-        // Create and show user text message IMMEDIATELY
-        const userTextMessage: ChatMessage = {
-          id: `user-${Date.now()}`,
-          role: 'user',
-          content: messageText,
-          timestamp: new Date()
-        };
-        
-        // Add user message to UI immediately
-        setMessages(prev => [...prev, userTextMessage]);
-        
         // Handle text message with streaming
+        // Note: sendMessageWithStreaming will add the user message automatically
         await streaming.sendMessageWithStreaming(
           messageText, 
           currentChatId || undefined,

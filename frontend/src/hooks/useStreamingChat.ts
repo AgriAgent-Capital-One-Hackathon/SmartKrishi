@@ -376,8 +376,8 @@ export const useStreamingChat = ({
         //     stage: event.stage
         //   });
         //   break;
-
           break;
+       
 
         case 'response_chunk':
           // Start streaming response
