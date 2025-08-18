@@ -429,8 +429,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **GitHub Issues**: Bug reports and feature requests
 - **Documentation**: Comprehensive guides and API reference
-- **Community**: Join our developer community
-- **Email**: Contact the development team
 
 ## 🏆 Capital One Hackathon - Technical Innovation Showcase
 
