@@ -11,7 +11,7 @@ This is a **bold** text with *italic* text.
 
 ### Code blocks?
 \`\`\`javascript
-console.log("Hello World");
+// Debug log removed
 \`\`\`
 
 Normal paragraph with inline \`code\`.

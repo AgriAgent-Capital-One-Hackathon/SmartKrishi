@@ -43,7 +43,7 @@ api.interceptors.response.use(
         logout();
       } catch (e) {
         // fallback - still fine to remove token
-        console.warn('Could not call logout on store', e);
+        // Could not call logout on store - continuing
       }
 
       window.location.href = '/auth';

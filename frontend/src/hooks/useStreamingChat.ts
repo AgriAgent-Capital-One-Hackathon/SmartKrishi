@@ -258,7 +258,7 @@ export const useStreamingChat = ({
   }, [onMessageUpdate]);
 
   const handleStreamingEvent = useCallback(async (event: StreamingEvent) => {
-    console.log('🎭 Agent API Event:', event.type, event);
+    // Agent API Event processing
     
     const messageId = event.message_id;
     if (!messageId) return;
@@ -461,7 +461,7 @@ export const useStreamingChat = ({
           
           // Notify about chat creation if this was a new chat
           if (event.chat_id && onChatCreated) {
-            console.log('🔥 End event received with chat_id:', event.chat_id);
+            // End event received with chat_id
             onChatCreated(event.chat_id);
           }
           
@@ -470,7 +470,7 @@ export const useStreamingChat = ({
 
         default:
           // Handle any unknown event types by logging them but not processing
-          console.warn('Unknown event type received:', event.type, event);
+          // Unknown event type received
           break;
       }
 

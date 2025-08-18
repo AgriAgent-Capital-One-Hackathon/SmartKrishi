@@ -41,7 +41,7 @@ export default function MessageActions({
       // Reset the icon after 2 seconds
       setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
-      console.error('Failed to copy text:', error);
+      // Error handling
       // Fallback for older browsers
       const textArea = document.createElement('textarea');
       textArea.value = content;

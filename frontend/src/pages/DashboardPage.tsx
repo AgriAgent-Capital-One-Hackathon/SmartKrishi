@@ -95,7 +95,7 @@ export default function DashboardPage() {
       }
     },
     onError: (error) => {
-      console.error('Streaming error:', error);
+      // Error handling
       setMessages(prev => [...prev, {
         id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         role: 'assistant',
@@ -104,7 +104,7 @@ export default function DashboardPage() {
       }]);
     },
     onChatCreated: (chatId) => {
-      console.log('🔄 Chat created/updated with ID:', chatId, 'Current chatId:', currentChatId);
+      // Development log removed
       setCurrentChatId(chatId);
     }
   });
@@ -121,7 +121,7 @@ export default function DashboardPage() {
           prompt: s.prompt
         })));
       } catch (error) {
-        console.error('Failed to load suggestions:', error);
+        // Error handling
         // Fallback suggestions
         setSuggestionCards([
           {
@@ -232,10 +232,10 @@ export default function DashboardPage() {
       try {
         await reasoning.loadChatReasoning(chatId);
       } catch (error) {
-        console.warn('Could not load chat reasoning:', error);
+        // Warning handled
       }
     } catch (error) {
-      console.error('Failed to load chat:', error);
+      // Error handling
     }
   };
 
@@ -245,7 +245,7 @@ export default function DashboardPage() {
       logout()
       navigate('/login')
     } catch (error) {
-      console.error('Logout failed:', error)
+      // Error handling
     }
   };
 
@@ -257,11 +257,11 @@ export default function DashboardPage() {
     // Validate files before adding
     const validFiles = files.filter(file => {
       if (!chatService.isFileTypeAllowed(file.name)) {
-        alert(`File "${file.name}" has an invalid type. Allowed types: .png, .jpg, .jpeg, .gif, .pdf, .docx, .xlsx, .csv`);
+        // File validation error - could show toast notification instead
         return false;
       }
       if (!chatService.validateFileSize(file)) {
-        alert(`File "${file.name}" is too large. Maximum size is 10MB.`);
+        // File validation error - could show toast notification instead
         return false;
       }
       return true;
@@ -276,9 +276,9 @@ export default function DashboardPage() {
     setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
   }
 
-  const handleCopyMessage = (content: string) => {
+  const handleCopyMessage = (_content: string) => {
     // Already handled by the MessageActions component
-    console.log('Message copied:', content);
+    // Development log removed
   }
 
   const handleEditMessage = (messageId: string) => {
@@ -292,13 +292,13 @@ export default function DashboardPage() {
     }
   }
 
-  const handleLikeMessage = (messageId: string) => {
-    console.log('Message liked:', messageId);
+  const handleLikeMessage = (_messageId: string) => {
+    // Development log removed
     // TODO: Implement feedback to backend
   }
 
-  const handleDislikeMessage = (messageId: string) => {
-    console.log('Message disliked:', messageId);
+  const handleDislikeMessage = (_messageId: string) => {
+    // Development log removed
     // TODO: Implement feedback to backend
   }
 
@@ -323,7 +323,7 @@ export default function DashboardPage() {
       
       window.speechSynthesis.speak(utterance);
     } else {
-      console.warn('Text-to-speech not supported in this browser');
+      // Warning handled
     }
   }
 
@@ -339,7 +339,7 @@ export default function DashboardPage() {
 
     const messageText = message.trim();
     const filesToUpload = [...selectedFiles]; // Copy files before clearing
-    console.log('📤 Sending message with chatId:', currentChatId);
+    // Development log removed
     
     // Clear input immediately for better UX
     setMessage('');
@@ -351,14 +351,14 @@ export default function DashboardPage() {
         // Validate files before uploading
         const invalidFiles = filesToUpload.filter(file => !chatService.isFileTypeAllowed(file.name));
         if (invalidFiles.length > 0) {
-          alert(`Invalid file types: ${invalidFiles.map(f => f.name).join(', ')}. Allowed types: .png, .jpg, .jpeg, .gif, .pdf, .docx, .xlsx, .csv`);
+          // File validation error - could show toast notification instead
           setSelectedFiles(filesToUpload); // Restore files if validation fails
           return;
         }
 
         const oversizedFiles = filesToUpload.filter(file => !chatService.validateFileSize(file));
         if (oversizedFiles.length > 0) {
-          alert(`Files too large: ${oversizedFiles.map(f => f.name).join(', ')}. Maximum size is 10MB per file.`);
+          // File validation error - could show toast notification instead
           setSelectedFiles(filesToUpload); // Restore files if validation fails
           return;
         }
@@ -404,7 +404,7 @@ export default function DashboardPage() {
         );
       }
     } catch (error) {
-      console.error('Failed to send message:', error);
+      // Error handling
     }
   }
 

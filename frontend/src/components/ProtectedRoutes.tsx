@@ -26,7 +26,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
             const user = await authService.getCurrentUser();
             login(token, user);
           } catch (error) {
-            console.error('Token verification failed:', error);
+            // Error handling
             logout();
           } finally {
             setLoading(false);

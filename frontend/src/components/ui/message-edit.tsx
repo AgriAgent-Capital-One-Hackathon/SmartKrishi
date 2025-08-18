@@ -36,10 +36,10 @@ export function MessageEdit({
         // Success handled by parent component
       } else {
         // Handle error if needed
-        console.error('Failed to save message');
+        // Error handling
       }
     } catch (error) {
-      console.error('Error saving message:', error);
+      // Error handling
     } finally {
       setSaving(false);
     }

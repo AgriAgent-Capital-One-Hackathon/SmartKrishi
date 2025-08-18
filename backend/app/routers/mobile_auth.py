@@ -69,7 +69,7 @@ async def mobile_auth_init(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Mobile init error: {e}")
+        # Debug print removed
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to initialize mobile auth: {str(e)}"
@@ -87,10 +87,10 @@ async def mobile_auth_verify(
     """
     try:
         # Always verify Firebase ID token - no demo mode
-        print(f"Attempting to verify Firebase token for login: {verify_data.otp[:50]}..." if verify_data.otp else "No token provided")
+        # Debug print removed
         firebase_user = firebase_service.verify_id_token(verify_data.otp)
         if not firebase_user:
-            print(f"Firebase token verification failed for phone: {verify_data.phone_number}")
+            # Debug print removed
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid Firebase token. Please try again with a fresh OTP."
@@ -171,10 +171,10 @@ async def mobile_signup(
             )
         
         # Always verify Firebase token - no demo mode
-        print(f"Attempting to verify Firebase token for signup: {firebase_token[:50]}..." if firebase_token else "No token provided")
+        # Debug print removed
         firebase_user = firebase_service.verify_id_token(firebase_token)
         if not firebase_user:
-            print(f"Firebase token verification failed for phone: {phone_number}")
+            # Debug print removed
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid Firebase token. Please try again with a fresh OTP."
@@ -182,7 +182,7 @@ async def mobile_signup(
         
         # Extract phone number from Firebase user
         firebase_phone = firebase_user.get('phone_number')
-        print(f"Firebase user phone: {firebase_phone}, Request phone: {phone_number}")
+        # Debug print removed
         if firebase_phone != phone_number:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

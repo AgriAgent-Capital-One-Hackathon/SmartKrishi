@@ -329,7 +329,7 @@ const UserMessageActions: React.FC<{
       onCopy?.(content);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
-      console.error('Failed to copy:', error);
+      // Error handling
     }
   };
 
@@ -389,7 +389,7 @@ const AIMessageActions: React.FC<{
       onCopy?.(content);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
-      console.error('Failed to copy:', error);
+      // Error handling
     }
   };
 

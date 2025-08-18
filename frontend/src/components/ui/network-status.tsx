@@ -162,7 +162,7 @@ export function NetworkStatus({ className }: NetworkStatusProps) {
       }
 
     } catch (error) {
-      console.error('Network status check failed:', error);
+      // Error handling
       setNetworkStatus(prev => ({
         ...prev,
         quality: 'poor',

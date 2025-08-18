@@ -58,7 +58,7 @@ export function FallbackSettings({ onSettingsChange }: FallbackSettingsProps) {
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
-        console.error('No authentication token found');
+        // Error handling
         return;
       }
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/fallback/settings`, {
@@ -74,7 +74,7 @@ export function FallbackSettings({ onSettingsChange }: FallbackSettingsProps) {
         setPhoneNumber(data.fallback_phone || '');
       }
     } catch (error) {
-      console.error('Failed to load fallback settings:', error);
+      // Error handling
     }
   };
 
@@ -175,11 +175,11 @@ export function FallbackSettings({ onSettingsChange }: FallbackSettingsProps) {
         setMessage({ type: 'success', text: 'Phone number verified successfully!' });
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        console.error('Backend verification error:', response.status, errorData);
+        // Error handling
         throw new Error(errorData.detail || `Server error: ${response.status}`);
       }
     } catch (error) {
-      console.error('OTP verification error:', error);
+      // Error handling
       setMessage({ 
         type: 'error', 
         text: error instanceof Error ? error.message : 'Invalid OTP. Please try again.' 
@@ -220,7 +220,7 @@ export function FallbackSettings({ onSettingsChange }: FallbackSettingsProps) {
       }, 100);
       
     } catch (error) {
-      console.error('Phone verification error:', error);
+      // Error handling
       setMessage({ 
         type: 'error', 
         text: error instanceof Error ? error.message : 'Failed to send verification OTP. Please try again.' 

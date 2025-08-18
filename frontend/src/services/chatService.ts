@@ -217,7 +217,7 @@ export const chatService = {
     try {
       // Use fetch instead of axios for proper streaming support
       const token = localStorage.getItem('auth_token');
-      console.log('🔐 Auth token:', token ? `${token.substring(0, 20)}...` : 'NOT FOUND');
+      // Auth token validation
       
       if (!token) {
         throw new Error('No authentication token found');
@@ -232,7 +232,7 @@ export const chatService = {
         include_logs: options?.include_logs
       };
       
-      console.log('📨 Streaming request:', { url, payload });
+      // Preparing streaming request
 
       // Add timeout controller for fetch request
       const controller = new AbortController();
@@ -254,12 +254,11 @@ export const chatService = {
 
         clearTimeout(timeoutId);
 
-      console.log('📡 Response status:', response.status, response.statusText);
-      console.log('📋 Response headers:', Object.fromEntries(response.headers.entries()));
+      // Checking response status and headers
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Response error:', errorText);
+        // Response error occurred
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
@@ -271,17 +270,17 @@ export const chatService = {
       const decoder = new TextDecoder();
       let eventCount = 0;
 
-      console.log('🎯 Starting to read stream...');
+      // Starting to read stream
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          console.log('✅ Stream reading completed');
+          // Stream reading completed
           break;
         }
 
         const chunk = decoder.decode(value, { stream: true });
-        console.log('📦 Raw chunk:', chunk.length, 'bytes:', chunk.substring(0, 200));
+        // Processing chunk data
         
         const lines = chunk.split('\n');
 
@@ -289,29 +288,29 @@ export const chatService = {
           if (line.startsWith('data: ')) {
             eventCount++;
             const dataStr = line.slice(6).trim();
-            console.log(`🎉 Event [${eventCount}]:`, dataStr);
+            // Processing event data
             
             if (dataStr === '[DONE]' || dataStr.includes('"type":"end"')) {
-              console.log('🏁 End event received, stopping stream');
+              // End event received, stopping stream
               return;
             }
 
             if (dataStr) {
               try {
                 const eventData = JSON.parse(dataStr);
-                console.log('✅ Parsed event:', eventData.type, eventData);
+                // Event parsed successfully
                 yield eventData as StreamingEvent;
               } catch (e) {
-                console.warn('❌ Failed to parse streaming event:', e, 'Data:', dataStr);
+                // Failed to parse streaming event - skipping
               }
             }
           } else if (line.trim()) {
-            console.log('📝 Non-data line:', line);
+            // Processing non-data line
           }
         }
       }
       
-      console.log(`🏆 Stream completed with ${eventCount} events`);
+      // Stream completed successfully
       } catch (fetchError) {
         clearTimeout(timeoutId);
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
@@ -320,7 +319,7 @@ export const chatService = {
         throw fetchError;
       }
     } catch (error) {
-      console.error('💥 Stream error:', error);
+      // Stream error occurred
       yield {
         type: 'error',
         error: error instanceof Error ? error.message : 'Unknown streaming error'
@@ -395,7 +394,7 @@ export const chatService = {
               const eventData = JSON.parse(dataStr);
               yield eventData as StreamingEvent;
             } catch (e) {
-              console.warn('Failed to parse streaming event:', e);
+              // Failed to parse streaming event - skipping
             }
           }
         }
@@ -408,7 +407,7 @@ export const chatService = {
         throw fetchError;
       }
     } catch (error) {
-      console.error('File upload stream error:', error);
+      // File upload stream error occurred
       yield {
         type: 'error',
         error: error instanceof Error ? error.message : 'Unknown file upload error'
@@ -421,7 +420,7 @@ export const chatService = {
       const response = await api.get(`/chat/chats/${chatId}/reasoning`);
       return response.data;
     } catch (error) {
-      console.error('Get chat reasoning error:', error);
+      // Get chat reasoning error occurred
       throw error;
     }
   },
@@ -431,7 +430,7 @@ export const chatService = {
       const response = await api.get(`/chat/messages/${messageId}/reasoning`);
       return response.data;
     } catch (error) {
-      console.error('Get message reasoning error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -441,7 +440,7 @@ export const chatService = {
       const response = await api.get('/chat/agent-tools');
       return response.data.tools;
     } catch (error) {
-      console.error('Get agent tools error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -451,7 +450,7 @@ export const chatService = {
       const response = await api.get('/chat/agent-config');
       return response.data;
     } catch (error) {
-      console.error('Get agent config error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -461,7 +460,7 @@ export const chatService = {
       const response = await api.put('/chat/agent-config', config);
       return response.data;
     } catch (error) {
-      console.error('Update agent config error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -476,7 +475,7 @@ export const chatService = {
 
       return response.data;
     } catch (error) {
-      console.error('Chat service error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -498,7 +497,7 @@ export const chatService = {
 
       return response.data;
     } catch (error) {
-      console.error('Image analysis error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -510,7 +509,7 @@ export const chatService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Get chats error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -520,7 +519,7 @@ export const chatService = {
       const response = await api.get(`/chat/chats/${chatId}`);
       return response.data;
     } catch (error) {
-      console.error('Get chat error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -530,7 +529,7 @@ export const chatService = {
       const response = await api.post('/chat/chats', { title });
       return response.data;
     } catch (error) {
-      console.error('Create chat error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -540,7 +539,7 @@ export const chatService = {
       const response = await api.put(`/chat/chats/${chatId}`, { title });
       return response.data;
     } catch (error) {
-      console.error('Update chat error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -549,7 +548,7 @@ export const chatService = {
     try {
       await api.delete(`/chat/chats/${chatId}`);
     } catch (error) {
-      console.error('Delete chat error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -559,7 +558,7 @@ export const chatService = {
       const response = await api.get('/chat/suggestions');
       return response.data.suggestions;
     } catch (error) {
-      console.error('Suggestions service error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -577,7 +576,7 @@ export const chatService = {
 
       return response.data.response;
     } catch (error) {
-      console.error('Chat service error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -596,7 +595,7 @@ export const chatService = {
 
       return response.data.response;
     } catch (error) {
-      console.error('Image analysis error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -619,7 +618,7 @@ export const chatService = {
 
       return response.data;
     } catch (error) {
-      console.error('File upload error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -629,7 +628,7 @@ export const chatService = {
       const uploadPromises = files.map(file => this.uploadFile(chatId, file, messageId));
       return await Promise.all(uploadPromises);
     } catch (error) {
-      console.error('Multiple file upload error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -639,7 +638,7 @@ export const chatService = {
       const response = await api.get(`/chat/chats/${chatId}/files`);
       return response.data.files || [];
     } catch (error) {
-      console.error('Get chat files error:', error);
+      // Error occurred in service method
       throw error;
     }
   },
@@ -648,7 +647,7 @@ export const chatService = {
     try {
       await api.delete(`/chat/files/${fileId}`);
     } catch (error) {
-      console.error('Delete file error:', error);
+      // Error occurred in service method
       throw error;
     }
   },

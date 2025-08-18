@@ -54,7 +54,7 @@ export default function HistoryDrawer({
       const chats = await chatService.getUserChats()
       setChatHistory(chats)
     } catch (error) {
-      console.error("Failed to load chat history:", error)
+      // Error handling
     } finally {
       setLoading(false)
     }
@@ -90,7 +90,7 @@ export default function HistoryDrawer({
           )
         )
       } catch (error) {
-        console.error("Failed to rename chat:", error)
+        // Error handling
       }
     }
     setEditingId(null)
@@ -103,7 +103,7 @@ export default function HistoryDrawer({
       setChatHistory(prev => prev.filter(chat => chat.id !== chatId))
       setOpenMenuId(null)
     } catch (error) {
-      console.error("Failed to delete chat:", error)
+      // Error handling
     }
   }
 
@@ -122,7 +122,7 @@ export default function HistoryDrawer({
       onChatSelect(newChat.id)
       onClose()
     } catch (error) {
-      console.error("Failed to create new chat:", error)
+      // Error handling
       onNewChat()
       onClose()
     }

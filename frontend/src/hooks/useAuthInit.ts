@@ -11,6 +11,6 @@ export const useAuthInit = () => {
   useEffect(() => {
     // Just ensure the store is initialized
     // The actual token verification will be handled by ProtectedRoute
-    console.log('Auth initialized, token present:', !!token);
+    // Auth initialized, checking token presence
   }, [token]);
 };

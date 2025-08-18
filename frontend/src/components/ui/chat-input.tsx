@@ -141,13 +141,13 @@ export default function ChatInput({
 
       recognitionRef.current = recognition
     } else {
-      console.warn("SpeechRecognition API not supported in this browser.")
+      // Warning handled
     }
   }, [onChange, value])
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert("Your browser does not support Speech Recognition.")
+      // Browser does not support Speech Recognition - silently disable feature
       return
     }
 

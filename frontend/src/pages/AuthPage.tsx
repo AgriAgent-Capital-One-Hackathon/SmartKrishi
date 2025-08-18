@@ -20,12 +20,8 @@ const PhoneInput = lazy(() => import('react-phone-number-input'));
 const loadFirebaseAuth = () => import('@/lib/firebase');
 
 // Create conditional logger
-const isDev = import.meta.env.DEV;
-const logger = {
-  log: (...args: any[]) => isDev && console.log(...args),
-  error: (...args: any[]) => isDev && console.error(...args),
-  warn: (...args: any[]) => isDev && console.warn(...args),
-};
+// Development variables removed
+// Conditional logging removed for production
 
 // Update the validation schemas to use a single unified schema
 const mobileSchema = z.object({
@@ -149,7 +145,7 @@ const UnifiedAuthPage: React.FC = () => {
     // Preload Firebase when mobile mode is likely to be used
     if (loginMode === 'mobile') {
       loadFirebaseAuth().catch(() => {
-        logger.warn('Failed to preload Firebase');
+        // Warning handled
       });
     }
   }, [loginMode]);
@@ -211,11 +207,9 @@ const UnifiedAuthPage: React.FC = () => {
   
   // Mobile auth handlers
   const handleMobileSubmit = async (data: MobileFormData) => {
-    logger.log('Mobile form submitted:', { 
-      phone: data.phone_number?.replace(/\d(?=\d{4})/g, '*'), 
-      hasUsername: !!data.username 
-    });
-    logger.log('Is signup mode:', isSignupMode);
+    // Log removed
+
+    // Log removed
 
     // Clear any previous errors
     mobileForm.clearErrors();
@@ -284,7 +278,7 @@ const UnifiedAuthPage: React.FC = () => {
       setSuccessMessage('OTP sent successfully! Check your phone.');
       
     } catch (err) {
-      logger.error('Mobile submit error:', err);
+      // Error handling
       setError(err instanceof Error ? err.message : 'Failed to send OTP');
     } finally {
       setLoading(false);
@@ -348,7 +342,7 @@ const UnifiedAuthPage: React.FC = () => {
       navigate('/dashboard');
       
     } catch (err) {
-      logger.error('OTP verification error:', err);
+      // Error handling
       setError(err instanceof Error ? err.message : 'Invalid OTP');
     } finally {
       setLoading(false);
@@ -373,7 +367,7 @@ const UnifiedAuthPage: React.FC = () => {
       otpRefs.current[0]?.focus();
       
     } catch (err) {
-      logger.error('Resend OTP error:', err);
+      // Error handling
       setError(err instanceof Error ? err.message : 'Failed to resend OTP');
     } finally {
       setLoading(false);
@@ -394,7 +388,7 @@ const UnifiedAuthPage: React.FC = () => {
       navigate('/dashboard');
       
     } catch (err: any) {
-      logger.error('Email login error:', err);
+      // Error handling
       setError(err.response?.data?.detail || err.message || 'Login failed');
     } finally {
       setLoading(false);
@@ -421,7 +415,7 @@ const UnifiedAuthPage: React.FC = () => {
       navigate('/dashboard');
       
     } catch (err: any) {
-      logger.error('Email signup error:', err);
+      // Error handling
       setError(err.response?.data?.detail || err.message || 'Signup failed');
     } finally {
       setLoading(false);

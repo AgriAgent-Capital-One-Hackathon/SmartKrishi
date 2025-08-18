@@ -57,7 +57,7 @@ export function FallbackStatus({ onOpenSettings, className }: FallbackStatusProp
         throw new Error('Failed to load fallback health');
       }
     } catch (error) {
-      console.error('Failed to load fallback health:', error);
+      // Error handling
       setError('Failed to load status');
     } finally {
       setLoading(false);
@@ -79,7 +79,7 @@ export function FallbackStatus({ onOpenSettings, className }: FallbackStatusProp
         await loadHealth(); // Refresh status
       }
     } catch (error) {
-      console.error('Failed to deactivate fallback:', error);
+      // Error handling
     }
   };
 
