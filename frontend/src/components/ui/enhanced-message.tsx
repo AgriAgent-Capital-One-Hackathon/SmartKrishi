@@ -186,7 +186,7 @@ const FileAttachment = ({ file }: { file: any }) => {
         {getFileIcon()}
       </div>
       <div className="flex-1 min-w-0 mx-2">
-        <p className="text-xs font-medium text-gray-800 truncate max-w-32">
+        <p className="text-xs font-medium text-gray-800 truncate max-w-24 sm:max-w-32">
           {file.original_filename}
         </p>
         <p className="text-xs text-gray-600">
@@ -271,9 +271,9 @@ const ReasoningTimeline: React.FC<{
           {!isThinking && (isExpanded ? <ChevronDown className="w-4 h-4 ml-auto" /> : <ChevronRight className="w-4 h-4 ml-auto" />)}
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2 w-full">
-          <div className="relative pl-8 pb-4 w-full">
+          <div className="relative pl-6 sm:pl-8 pb-4 w-full">
             {/* Animated vertical timeline line */}
-            <div className={`absolute left-4 top-0 bottom-0 w-0.5 ${
+            <div className={`absolute left-3 sm:left-4 top-0 bottom-0 w-0.5 ${
               isThinking 
                 ? 'bg-gradient-to-b from-green-500 via-green-300 to-gray-200 animate-pulse' 
                 : 'bg-gray-200'
@@ -282,21 +282,23 @@ const ReasoningTimeline: React.FC<{
             {sortedSteps.map((step, index) => (
               <div key={step.id || index} className="relative mb-4 last:mb-0 w-full">
                 {/* Timeline dot with glow effect */}
-                <div className={`absolute -left-7 top-2 w-6 h-6 bg-white border-2 rounded-full flex items-center justify-center transition-all duration-300 ${
+                <div className={`absolute -left-6 sm:-left-7 top-2 w-5 h-5 sm:w-6 sm:h-6 bg-white border-2 rounded-full flex items-center justify-center transition-all duration-300 ${
                   isThinking && index === sortedSteps.length - 1
                     ? 'border-green-400 shadow-lg shadow-green-200 animate-pulse' 
                     : 'border-gray-300'
                 }`}>
-                  {getEventIcon(step.step_type)}
+                  <div className="scale-75 sm:scale-100">
+                    {getEventIcon(step.step_type)}
+                  </div>
                 </div>
                 
                 {/* Step content with better styling */}
-                <div className={`bg-gradient-to-br from-green-50/50 via-white to-emerald-50/30 border border-green-100/50 p-3 rounded-lg ml-1 transition-all duration-300 w-full ${
+                <div className={`bg-gradient-to-br from-green-50/50 via-white to-emerald-50/30 border border-green-100/50 p-2 sm:p-3 rounded-lg ml-1 transition-all duration-300 w-full ${
                   isThinking && index === sortedSteps.length - 1
                     ? 'ring-2 ring-green-200 shadow-md border-green-200' 
                     : 'hover:shadow-sm hover:border-green-200/70'
                 }`}>
-                  <div className="prose prose-sm max-w-none text-gray-700">
+                  <div className="prose prose-xs sm:prose-sm max-w-none text-gray-700">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {formatEventContent(step)}
                     </ReactMarkdown>
@@ -400,16 +402,16 @@ const AIMessageActions: React.FC<{
   };
 
   return (
-    <div className="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="flex items-center space-x-1 sm:space-x-2 mt-3 pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
       <button
         onClick={handleCopy}
         className="p-1 hover:bg-gray-100 rounded transition-colors"
         title="Copy message"
       >
         {isCopied ? (
-          <Check className="w-4 h-4 text-green-500" />
+          <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
         ) : (
-          <Copy className="w-4 h-4 text-gray-500" />
+          <Copy className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
         )}
       </button>
 
@@ -420,9 +422,9 @@ const AIMessageActions: React.FC<{
           title={isReading ? "Stop reading" : "Read aloud"}
         >
           {isReading ? (
-            <VolumeX className="w-4 h-4 text-red-500" />
+            <VolumeX className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
           ) : (
-            <Volume2 className="w-4 h-4 text-gray-500" />
+            <Volume2 className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
           )}
         </button>
       )}
@@ -433,7 +435,7 @@ const AIMessageActions: React.FC<{
           className="p-1 hover:bg-gray-100 rounded transition-colors"
           title="Like message"
         >
-          <ThumbsUp className="w-4 h-4 text-gray-500" />
+          <ThumbsUp className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
         </button>
       )}
 
@@ -443,7 +445,7 @@ const AIMessageActions: React.FC<{
           className="p-1 hover:bg-gray-100 rounded transition-colors"
           title="Dislike message"
         >
-          <ThumbsDown className="w-4 h-4 text-gray-500" />
+          <ThumbsDown className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
         </button>
       )}
     </div>
@@ -465,10 +467,10 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
   const hasReasoning = message.reasoning_steps && message.reasoning_steps.length > 0;
 
   if (isUser) {
-    // User message - green bubble, right aligned, consistent size
+    // User message - green bubble, right aligned, responsive width
     return (
       <div className="flex justify-end mb-6 group">
-        <div className="max-w-lg">
+        <div className="max-w-[85%] sm:max-w-lg">
           {/* File attachments */}
           {message.files && message.files.length > 0 && (
             <div className="mb-2">
@@ -478,7 +480,7 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
             </div>
           )}
           
-          <div className="bg-green-500 text-white px-4 py-3 rounded-2xl rounded-br-md text-sm">
+          <div className="bg-green-500 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-2xl rounded-br-md text-sm">
             <div className="prose prose-sm max-w-none text-white prose-invert">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {message.content}
@@ -496,10 +498,10 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
     );
   }
 
-  // AI message - transparent background, left aligned, consistent width with chat input
+  // AI message - transparent background, left aligned, responsive width
   return (
     <div className="flex justify-start mb-6 group">
-      <div className="w-full max-w-4xl">
+      <div className="w-full max-w-full sm:max-w-4xl">
         {/* Reasoning Timeline (shown first, at the top) */}
         {hasReasoning && (
           <ReasoningTimeline
@@ -511,26 +513,26 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
         )}
 
         {/* Message Content */}
-        <div>
+        <div className="px-2 sm:px-0">
           {message.is_thinking && !hasReasoning ? (
             <ThinkingAnimation />
           ) : message.is_streaming ? (
             <StreamingText content={message.content} />
           ) : (
-            <div className="prose max-w-none">
+            <div className="prose prose-sm sm:prose max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
                   code({ className, children, ...props }: any) {
                     const match = /language-(\w+)/.exec(className || '');
                     return match ? (
-                      <pre className="bg-gray-100 p-3 rounded-md overflow-x-auto">
+                      <pre className="bg-gray-100 p-2 sm:p-3 rounded-md overflow-x-auto text-xs sm:text-sm">
                         <code className={className} {...props}>
                           {children}
                         </code>
                       </pre>
                     ) : (
-                      <code className="bg-gray-100 px-1 py-0.5 rounded text-sm" {...props}>
+                      <code className="bg-gray-100 px-1 py-0.5 rounded text-xs sm:text-sm" {...props}>
                         {children}
                       </code>
                     );

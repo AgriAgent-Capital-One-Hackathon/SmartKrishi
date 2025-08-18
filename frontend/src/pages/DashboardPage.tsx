@@ -2,7 +2,7 @@ import React, { useState, useLayoutEffect, useRef, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import ChatInput from "@/components/ui/chat-input"
 import { EnhancedMessage } from "../components/ui/enhanced-message";
-import Navbar from "@/components/ui/navbar"
+import ResponsiveNavbar from "@/components/ui/responsive-navbar"
 import HistoryDrawer from "@/components/ui/history-drawer"
 import SettingsModal from "@/components/ui/settings-modal"
 import { FallbackSettings } from "@/components/ui/fallback-settings"
@@ -409,9 +409,9 @@ export default function DashboardPage() {
   }
 
 return (
-    <div className="h-screen flex bg-gradient-to-br from-gray-50 via-green-50 to-white ">
-      {/* Navbar */}
-      <Navbar 
+    <div className="h-screen flex flex-col lg:flex-row bg-gradient-to-br from-gray-50 via-green-50 to-white">
+      {/* Responsive Navigation */}
+      <ResponsiveNavbar 
         onNewChat={handleNewChat}
         onHistoryClick={() => setIsHistoryOpen(true)}
         onSettingsClick={() => setIsSettingsOpen(true)}
@@ -420,27 +420,27 @@ return (
       {/* Main Content */}
       <div className="flex-1 flex flex-col bg-gradient-to-br from-gray-50 via-green-50 to-white">
         {showSuggestions ? (
-          <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex-1 overflow-y-auto p-4 lg:p-8">
             <div className="flex flex-col items-center justify-center min-h-full animate-fadeIn">
               <div className="text-center max-w-2xl mb-8">
                 <div className="mb-4">
-                  <span className="text-6xl drop-shadow-sm">🌱</span>
+                  <span className="text-4xl lg:text-6xl drop-shadow-sm">🌱</span>
                 </div>
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                <h1 className="text-2xl lg:text-3xl font-bold text-gray-800 mb-2">
                   Welcome to <span className="bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">SmartKrishi</span>
                 </h1>
-                <p className="text-lg text-gray-600">
+                <p className="text-base lg:text-lg text-gray-600">
                   Your AI-powered farming assistant with advanced reasoning. Ask me anything about agriculture, crops, or farming techniques.
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl px-4">
                 {suggestionCards.map((card) => (
                   <Card 
                     key={card.id}
                     className="cursor-pointer backdrop-blur-lg bg-white/70 border border-green-100 hover:border-green-300 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 rounded-xl"
                     onClick={() => handleSuggestionClick(card.prompt)}
                   >
-                    <CardContent className="p-6 flex items-center space-x-4">
+                    <CardContent className="p-4 lg:p-6 flex items-center space-x-4">
                       <div className="flex-shrink-0">{card.icon}</div>
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-800 mb-1">{card.text}</h3>
@@ -454,7 +454,7 @@ return (
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-green-50 to-white">
-            <div className="w-full max-w-4xl mx-auto px-6">
+            <div className="w-full max-w-4xl mx-auto px-4 lg:px-6">
               {messages.map((msg) => (
                 <EnhancedMessage
                   key={msg.id}
@@ -474,7 +474,7 @@ return (
         )}
 
         {/* Fixed Chat Input at Bottom */}
-        <div className="flex-shrink-0 bg-transparent border-none">
+        <div className="flex-shrink-0 bg-transparent border-none px-4 lg:px-0">
           <ChatInput
             value={message}
             onChange={setMessage}

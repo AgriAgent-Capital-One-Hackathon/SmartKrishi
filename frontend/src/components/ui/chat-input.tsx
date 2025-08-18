@@ -112,7 +112,7 @@ export default function ChatInput({
 
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition()
-      recognition.lang = "en-US"
+      recognition.lang = "en-IN"
       recognition.interimResults = true
       recognition.continuous = false
 
@@ -161,13 +161,13 @@ export default function ChatInput({
   }
 
   return (
-    <div className={`px-4 py-6 ${className}`}>
+    <div className={`px-2 sm:px-4 py-4 sm:py-6 ${className}`}>
       <div className="max-w-4xl mx-auto">
-        <div className="relative bg-gray-50 border border-gray-200 rounded-3xl shadow-sm hover:shadow-md transition-all duration-200 focus-within:border-emerald-500">
+        <div className="relative bg-gray-50 border border-gray-200 rounded-2xl sm:rounded-3xl shadow-sm hover:shadow-md transition-all duration-200 focus-within:border-emerald-500">
           {/* File Previews - ChatGPT Style */}
           {selectedFiles.length > 0 && (
-            <div className="px-4 pt-3 pb-2 border-b border-gray-200">
-              <div className="flex flex-wrap">
+            <div className="px-3 sm:px-4 pt-2 sm:pt-3 pb-1 sm:pb-2 border-b border-gray-200">
+              <div className="flex flex-wrap gap-1 sm:gap-2">
                 {selectedFiles.map((file, index) => (
                   <FilePreview 
                     key={`${file.name}-${index}`}
@@ -179,16 +179,16 @@ export default function ChatInput({
             </div>
           )}
 
-          <div className="flex items-end px-3 py-2">
+          <div className="flex items-end px-2 sm:px-3 py-2">
             {/* File Upload Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled}
-              className="flex-shrink-0 p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-xl hover:bg-gray-100"
+              className="flex-shrink-0 p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-xl hover:bg-gray-100"
               title="Attach file"
             >
-              <Paperclip className="w-5 h-5" />
+              <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             {/* Hidden File Input */}
@@ -203,7 +203,7 @@ export default function ChatInput({
             />
 
             {/* Message Textarea */}
-            <div className="flex-1 mx-2">
+            <div className="flex-1 mx-1 sm:mx-2">
               <textarea
                 ref={textareaRef}
                 value={value}
@@ -211,9 +211,9 @@ export default function ChatInput({
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 disabled={disabled}
-                className="w-full bg-transparent border-0 outline-0 resize-none placeholder:text-gray-500 text-gray-900 text-sm leading-relaxed max-h-[150px] overflow-y-auto disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full bg-transparent border-0 outline-0 resize-none placeholder:text-gray-500 text-gray-900 text-sm leading-relaxed max-h-[120px] sm:max-h-[150px] overflow-y-auto disabled:cursor-not-allowed disabled:opacity-50"
                 style={{
-                  minHeight: "24px",
+                  minHeight: "20px",
                   height: "auto"
                 }}
                 rows={1}
@@ -225,7 +225,7 @@ export default function ChatInput({
   type="button"
   onClick={toggleListening}
   disabled={disabled}
-  className={`flex-shrink-0 p-2 rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed
+  className={`flex-shrink-0 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed
     ${isListening 
       ? "text-red-500 animate-pulse" 
       : "text-gray-500 hover:text-gray-700 hover:shadow-md hover:bg-gray-100"}`
@@ -235,7 +235,7 @@ export default function ChatInput({
   }}
   title={isListening ? "Listening..." : "Start voice input"}
 >
-  <Mic className="w-5 h-5" />
+  <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
 </button>
 
 {/* Send Button */}
@@ -243,14 +243,14 @@ export default function ChatInput({
   type="button"
   onClick={onSend}
   disabled={!canSend}
-  className={`flex-shrink-0 w-9 h-9 ml-2 rounded-full flex items-center justify-center transition-all ${
+  className={`flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 ml-1 sm:ml-2 rounded-full flex items-center justify-center transition-all ${
     canSend
       ? "bg-green-600 hover:bg-green-700 text-white cursor-pointer shadow-sm hover:shadow"
       : "bg-gray-300 text-gray-500 cursor-not-allowed"
   }`}
   title={canSend ? "Send message" : "Type a message to send"}
 >
-  <Send className="w-4 h-4" />
+  <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
 </button>
 
           </div>

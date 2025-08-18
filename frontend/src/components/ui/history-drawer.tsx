@@ -152,7 +152,7 @@ export default function HistoryDrawer({
       />
 
       {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-80 bg-white/70 backdrop-blur-lg border-l border-white/20 shadow-xl z-50 flex flex-col rounded-l-xl overflow-hidden">
+      <div className="fixed right-0 top-0 h-full w-full sm:w-96 lg:w-80 bg-white/70 backdrop-blur-lg border-l border-white/20 shadow-xl z-50 flex flex-col rounded-l-xl overflow-hidden">
         
         {/* Header */}
         <div className="p-4 border-b border-white/20 bg-gradient-to-r from-emerald-500/10 to-teal-400/10">
