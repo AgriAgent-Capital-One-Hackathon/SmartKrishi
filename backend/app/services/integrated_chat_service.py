@@ -242,16 +242,44 @@ class IntegratedChatService:
         Upload file to agent API and optionally analyze it
         """
         try:
+            # Get or ensure agent chat exists
+            logger.info(f"Getting chat {chat_id} for user {user_id}")
+            chat = ChatService.get_chat_by_id(db, chat_id, user_id)
+            if not chat:
+                raise ValueError(f"Chat {chat_id} not found")
+            
+            logger.info(f"Found chat: {chat_id}, current agent_chat_id: {chat.agent_chat_id}")
+            
+            # Get the agent chat ID
+            logger.info("Calling ChatService.ensure_agent_chat...")
+            agent_chat_id = await ChatService.ensure_agent_chat(db, chat)
+            logger.info(f"✅ Got agent_chat_id: {agent_chat_id}")
+            
             # Determine file type
             file_extension = filename.lower().split('.')[-1] if '.' in filename else 'unknown'
+            logger.info(f"📄 File extension extracted: '{file_extension}' from filename: '{filename}'")
             
-            # Upload file to agent API
+            # Upload file to agent API using the correct agent_chat_id
             upload_result = await self.agent_api.upload_file(
                 user_id=str(user_id),
-                chat_id=str(chat_id),
+                chat_id=agent_chat_id,  # Use agent_chat_id instead of chat_id
                 file_data=file_data,
                 filename=filename,
                 file_type=file_extension
+            )
+            
+            # Save file to local database (without duplicate upload)
+            from app.services.file_service import FileService
+            
+            file_service = FileService(db)
+            saved_file = await file_service.save_file_to_database(
+                user_id=user_id,
+                chat_id=chat_id,
+                file_data=file_data,
+                filename=filename,
+                mime_type=f"application/{file_extension}",
+                agent_file_id=upload_result.get("file_id", ""),
+                message_id=None
             )
             
             yield {
@@ -259,7 +287,7 @@ class IntegratedChatService:
                 "file_id": upload_result.get("file_id"),
                 "filename": filename,
                 "status": upload_result.get("status"),
-                "chat_id": str(chat_id)
+                "chat_id": str(chat_id)  # Return local chat_id for frontend
             }
             
             # If there's a message, analyze the file

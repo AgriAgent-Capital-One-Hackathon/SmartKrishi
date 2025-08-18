@@ -17,7 +17,10 @@ import {
   FileText,
   AlertCircle,
   CheckCircle,
-  Wrench
+  Wrench,
+  FileImage,
+  File as FileIcon,
+  Download
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './collapsible';
 import ReactMarkdown from 'react-markdown';
@@ -123,14 +126,14 @@ const formatEventContent = (event: ReasoningStep): string => {
         return `**Sources:**\n\n${sourceList}`;
       }
       return `**Sources:** No sources available`;
-    case 'grounding_supports':
-      if (event.supports && Array.isArray(event.supports)) {
-        const supports = event.supports.map((support: any, index: number) => 
-          `${index + 1}. ${support.title || support.url || support}`
-        ).join('\n');
-        return `**Citations:**\n${supports}`;
-      }
-      return `**Citations:** Supporting evidence provided`;
+    // case 'grounding_supports':
+    //   if (event.supports && Array.isArray(event.supports)) {
+    //     const supports = event.supports.map((support: any, index: number) => 
+    //       `${index + 1}. ${support.title || support.url || support}`
+    //     ).join('\n');
+    //     return `**Citations:**\n${supports}`;
+    //   }
+    //   return `**Citations:** Supporting evidence provided`;
     case 'web_search':
     case 'search':
       return `**Web Search:** "${event.query || event.content}"`;
@@ -147,6 +150,55 @@ const formatEventContent = (event: ReasoningStep): string => {
     default:
       return event.content || `${event.step_type} event`;
   }
+};
+
+// File attachment display component
+const FileAttachment = ({ file }: { file: any }) => {
+  const getFileIcon = () => {
+    const fileName = file.original_filename.toLowerCase();
+    
+    if (fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.gif')) {
+      return <FileImage className="w-4 h-4 text-blue-500" />;
+    } else if (fileName.endsWith('.pdf')) {
+      return <FileText className="w-4 h-4 text-red-500" />;
+    } else if (fileName.endsWith('.docx')) {
+      return <FileText className="w-4 h-4 text-blue-600" />;
+    } else if (fileName.endsWith('.xlsx')) {
+      return <FileIcon className="w-4 h-4 text-green-600" />;
+    } else if (fileName.endsWith('.csv')) {
+      return <FileIcon className="w-4 h-4 text-orange-500" />;
+    } else {
+      return <FileText className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  return (
+    <div className="inline-flex items-center bg-white/90 border border-white/50 rounded-lg p-2 mr-2 mb-2 shadow-sm">
+      <div className="flex-shrink-0">
+        {getFileIcon()}
+      </div>
+      <div className="flex-1 min-w-0 mx-2">
+        <p className="text-xs font-medium text-gray-800 truncate max-w-32">
+          {file.original_filename}
+        </p>
+        <p className="text-xs text-gray-600">
+          {formatFileSize(file.file_size)}
+          {file.processing_status === 'completed' && ' • processed'}
+        </p>
+      </div>
+      {file.processing_status === 'completed' && (
+        <Download className="w-3 h-3 text-gray-600" />
+      )}
+    </div>
+  );
 };
 
 const ThinkingAnimation: React.FC = () => (
@@ -401,7 +453,6 @@ const AIMessageActions: React.FC<{
 export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
   message,
   onCopy,
-  onEdit,
   onLike,
   onDislike,
   onReadAloud,
@@ -418,6 +469,15 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
     return (
       <div className="flex justify-end mb-6 group">
         <div className="max-w-lg">
+          {/* File attachments */}
+          {message.files && message.files.length > 0 && (
+            <div className="mb-2">
+              {message.files.map((file, index) => (
+                <FileAttachment key={file.id || index} file={file} />
+              ))}
+            </div>
+          )}
+          
           <div className="bg-green-500 text-white px-4 py-3 rounded-2xl rounded-br-md text-sm">
             <div className="prose prose-sm max-w-none text-white prose-invert">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -429,7 +489,7 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
             messageId={message.id}
             content={message.content}
             onCopy={onCopy}
-            onEdit={onEdit}
+            onEdit={undefined}
           />
         </div>
       </div>

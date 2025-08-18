@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, Edit, ThumbsUp, ThumbsDown, Volume2, Square, X, FileImage, FileText } from 'lucide-react';
+import { Copy, Check, Edit, ThumbsUp, ThumbsDown, Volume2, Square, X, FileImage, FileText, FileSpreadsheet, File } from 'lucide-react';
 
 interface MessageActionsProps {
   messageId: string;
@@ -177,6 +177,24 @@ export function FilePreview({ file, onRemove, className = "" }: FilePreviewProps
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const getFileIcon = () => {
+    const fileName = file.name.toLowerCase();
+    
+    if (isImage) {
+      return <FileImage className="w-4 h-4 text-blue-500" />;
+    } else if (fileName.endsWith('.pdf')) {
+      return <FileText className="w-4 h-4 text-red-500" />;
+    } else if (fileName.endsWith('.docx')) {
+      return <FileText className="w-4 h-4 text-blue-600" />;
+    } else if (fileName.endsWith('.xlsx')) {
+      return <FileSpreadsheet className="w-4 h-4 text-green-600" />;
+    } else if (fileName.endsWith('.csv')) {
+      return <File className="w-4 h-4 text-orange-500" />;
+    } else {
+      return <FileText className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
   return (
     <div className={`inline-flex items-center bg-gray-50 border border-gray-200 rounded-lg p-2 mr-2 mb-2 shadow-sm hover:shadow-md transition-shadow ${className}`}>
       {/* File Icon/Preview */}
@@ -189,11 +207,7 @@ export function FilePreview({ file, onRemove, className = "" }: FilePreviewProps
           />
         ) : (
           <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-            {isImage ? (
-              <FileImage className="w-4 h-4 text-gray-500" />
-            ) : (
-              <FileText className="w-4 h-4 text-gray-500" />
-            )}
+            {getFileIcon()}
           </div>
         )}
       </div>

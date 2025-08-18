@@ -1,7 +1,10 @@
 from pydantic import BaseModel
-from typing import List, Optional, Any
+from typing import List, Optional, Any, TYPE_CHECKING
 from datetime import datetime
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from .file import UploadedFile
 
 class ReasoningStepBase(BaseModel):
     step_type: str
@@ -43,6 +46,7 @@ class ChatMessage(ChatMessageBase):
     created_at: datetime
     edited_at: Optional[datetime] = None
     reasoning_steps: List[ReasoningStep] = []
+    files: List['UploadedFile'] = []
     
     class Config:
         from_attributes = True
@@ -107,3 +111,13 @@ class CreateChatRequest(BaseModel):
 
 class UpdateChatRequest(BaseModel):
     title: str
+
+
+# Import and rebuild models to resolve forward references
+def rebuild_chat_models():
+    from .file import UploadedFile
+    ChatMessage.model_rebuild()
+    Chat.model_rebuild()
+
+# Call rebuild function
+rebuild_chat_models()

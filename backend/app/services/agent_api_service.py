@@ -16,7 +16,8 @@ class AgentAPIService:
         if not self.base_url:
             raise ValueError("AGENT_API_BASE_URL not set in environment variables")
         
-        self.timeout = httpx.Timeout(60.0, connect=30.0)
+        # Default timeout for regular requests
+        self.timeout = httpx.Timeout(120.0, connect=30.0, read=60.0)
         
     async def create_chat(self, user_id: str, chat_name: str) -> Dict[str, Any]:
         """Create a new chat in the agent API"""
@@ -64,9 +65,12 @@ class AgentAPIService:
         include_logs: bool = True
     ) -> AsyncGenerator[StreamingEvent, None]:
         """Stream a message to the agent API and yield events"""
-        # Use shorter timeout for streaming to prevent hanging
-        timeout = httpx.Timeout(30.0, connect=5.0, read=10.0)
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        # Use much longer timeout for AI streaming responses (5 minutes total, 2 minutes read)
+        timeout = httpx.Timeout(300.0, connect=30.0, read=120.0)
+        
+        # Use connection pooling and keepalive for better reliability
+        limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
+        async with httpx.AsyncClient(timeout=timeout, limits=limits) as client:
             try:
                 # Prepare form data
                 form_data = {
@@ -162,14 +166,20 @@ class AgentAPIService:
                     
                     logger.info(f"Completed streaming request after {line_count} lines")
                                 
+            except httpx.TimeoutException as e:
+                logger.error(f"Timeout in agent API streaming: {type(e).__name__}: {str(e)}")
+                yield StreamingEvent(
+                    type="error",
+                    data={"error": f"Request timed out - the AI service is taking longer than expected. Please try again."}
+                )
             except httpx.HTTPError as e:
-                logger.error(f"HTTP error in agent API streaming: {e}")
+                logger.error(f"HTTP error in agent API streaming: {type(e).__name__}: {str(e)}")
                 yield StreamingEvent(
                     type="error",
                     data={"error": f"Network error: {str(e)}"}
                 )
             except Exception as e:
-                logger.error(f"Unexpected error in agent API streaming: {e}")
+                logger.error(f"Unexpected error in agent API streaming: {type(e).__name__}: {str(e)}")
                 yield StreamingEvent(
                     type="error",
                     data={"error": f"Unexpected error: {str(e)}"}
@@ -187,16 +197,26 @@ class AgentAPIService:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
                 # Determine upload endpoint based on file type
-                if file_type.lower() in ['pdf']:
+                file_ext = file_type.lower()
+                logger.info(f"🔍 Processing file type: '{file_ext}'")
+                
+                if file_ext in ['pdf']:
                     endpoint = f"{self.base_url}/upload/pdf"
-                elif file_type.lower() in ['jpg', 'jpeg', 'png', 'gif']:
+                elif file_ext in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
                     endpoint = f"{self.base_url}/upload/image"
-                elif file_type.lower() in ['docx']:
+                elif file_ext in ['docx']:
                     endpoint = f"{self.base_url}/upload/docx"
-                elif file_type.lower() in ['xlsx']:
+                elif file_ext in ['xlsx', 'xls']:
                     endpoint = f"{self.base_url}/upload/xlsx"
+                elif file_ext in ['csv']:
+                    endpoint = f"{self.base_url}/upload/csv"
+                elif file_ext in ['txt']:
+                    endpoint = f"{self.base_url}/upload/csv"  # Text files can use csv endpoint
                 else:
-                    raise ValueError(f"Unsupported file type: {file_type}")
+                    logger.error(f"❌ Unsupported file type: '{file_ext}'")
+                    raise ValueError(f"Unsupported file type: {file_ext}")
+                
+                logger.info(f"📡 Using endpoint: {endpoint}")
                 
                 files = {"file": (filename, file_data)}
                 data = {

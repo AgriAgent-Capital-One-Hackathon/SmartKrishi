@@ -27,6 +27,14 @@ class PhoneVerificationRequest(BaseModel):
     firebase_token: str
 
 
+class TelegramVerificationRequest(BaseModel):
+    registration_code: str
+
+
+class TelegramMessageRequest(BaseModel):
+    message: str
+
+
 @router.get("/settings", response_model=FallbackSettings)
 async def get_fallback_settings(
     current_user: User = Depends(get_current_user),
@@ -292,3 +300,84 @@ async def get_normal_chats(
     """Get normal (non-fallback) chats for the current user"""
     normal_chats = ChatService.get_user_normal_chats(db, current_user.id, skip, limit)
     return {"normal_chats": normal_chats}
+
+
+# Telegram Integration Endpoints
+
+@router.post("/telegram/verify-registration")
+async def verify_telegram_registration(
+    request: TelegramVerificationRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Verify Telegram bot registration with registration code"""
+    success = await fallback_service.verify_telegram_registration(
+        db, current_user.id, request.registration_code
+    )
+    
+    if not success:
+        raise HTTPException(status_code=400, detail="Invalid registration code or verification failed")
+    
+    return {"message": "Telegram registration verified successfully"}
+
+
+@router.post("/telegram/activate")
+async def activate_telegram_fallback(
+    trigger: str = "manual",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Activate Telegram fallback mode"""
+    success = await fallback_service.activate_telegram_fallback(
+        db, current_user.id, trigger
+    )
+    
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to activate Telegram fallback")
+    
+    return {"message": "Telegram fallback activated successfully"}
+
+
+@router.post("/telegram/deactivate")
+async def deactivate_telegram_fallback(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Deactivate Telegram fallback mode"""
+    success = await fallback_service.deactivate_telegram_fallback(
+        db, current_user.id
+    )
+    
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to deactivate Telegram fallback")
+    
+    return {"message": "Telegram fallback deactivated successfully"}
+
+
+@router.post("/telegram/send-message")
+async def send_telegram_message(
+    request: TelegramMessageRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Send message to user via Telegram (for testing)"""
+    success = await fallback_service.send_telegram_message(
+        current_user.id, request.message
+    )
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to send Telegram message")
+    
+    return {"message": "Telegram message sent successfully"}
+
+
+@router.get("/telegram/user-info")
+async def get_telegram_user_info(
+    current_user: User = Depends(get_current_user)
+):
+    """Get Telegram user information"""
+    user_info = await fallback_service.get_telegram_user_info(current_user.id)
+    
+    if not user_info:
+        raise HTTPException(status_code=404, detail="Telegram user not found")
+    
+    return user_info

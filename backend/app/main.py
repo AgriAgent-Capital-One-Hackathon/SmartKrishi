@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from app.db.database import engine, Base
-from app.models import user  # Import models to create tables
+from app.models import user, chat as chat_models, reasoning, fallback as fallback_models, file  # Import ALL models to create tables
 from app.routers import auth, mobile_auth, chat, fallback  # Add fallback import
 
 # Create FastAPI instance

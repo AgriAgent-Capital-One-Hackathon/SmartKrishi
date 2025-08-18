@@ -13,12 +13,14 @@ from ..ai.chat_service import ChatService as AIService
 from ..services.chat_service import ChatService
 from ..services.integrated_chat_service import IntegratedChatService
 from ..services.reasoning_service import ReasoningService
+from ..services.file_service import FileService
 from ..schemas.user import User
 from ..schemas.chat import (
     SendMessageRequest, SendMessageResponse, CreateChatRequest,
     UpdateChatRequest, Chat, ChatSummary, ChatMessage, ChatMessageCreate
 )
 from ..schemas.reasoning import StreamingStatus, ReasoningStep
+from ..schemas.file import FileUploadResponse, ChatFilesResponse, UploadedFile
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -442,14 +444,17 @@ async def upload_file_and_analyze_stream(
     """
     try:
         allowed_types = [
-            "image/jpeg", "image/png", "image/jpg", "image/webp",
+            "image/jpeg", "image/png", "image/jpg", "image/webp", "image/gif",
             "application/pdf",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", # DOCX
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",      # XLSX
+            "application/vnd.ms-excel",  # XLS
+            "text/csv",                  # CSV
+            "text/plain"                 # TXT
         ]
 
         if file.content_type not in allowed_types:
-            raise HTTPException(status_code=400, detail="Invalid file type. Supported: images, PDF, DOCX, XLSX")
+            raise HTTPException(status_code=400, detail="Invalid file type. Supported: images (JPG, PNG, WebP, GIF), PDF, DOCX, XLSX, CSV, TXT")
 
         file_data = await file.read()
         if len(file_data) > 20 * 1024 * 1024:  # 20MB
@@ -618,3 +623,104 @@ async def update_user_agent_config(
     except Exception as e:
         logger.exception(f"Update agent config error for user {current_user.id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to update agent configuration")
+
+
+# ----- File Management Endpoints -----
+
+@router.post("/upload-file", response_model=FileUploadResponse)
+async def upload_file(
+    chat_id: UUID = Form(...),
+    message_id: Optional[UUID] = Form(None),
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload a file to a chat"""
+    try:
+        file_service = FileService(db)
+        
+        # Validate file type
+        if not file_service.is_file_type_allowed(file.filename):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"File type not allowed. Allowed types: {file_service.get_allowed_file_types()}"
+            )
+        
+        # Read file data
+        file_data = await file.read()
+        
+        # Check file size (10MB limit)
+        if len(file_data) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File too large. Maximum size is 10MB.")
+        
+        # Upload file
+        result = await file_service.upload_file(
+            user_id=current_user.id,
+            chat_id=chat_id,
+            file_data=file_data,
+            filename=file.filename,
+            mime_type=file.content_type,
+            message_id=message_id
+        )
+        
+        return result
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"File upload error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload file")
+
+
+@router.get("/chats/{chat_id}/files", response_model=ChatFilesResponse)
+async def get_chat_files(
+    chat_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all files for a specific chat"""
+    try:
+        file_service = FileService(db)
+        return file_service.get_chat_files(current_user.id, chat_id)
+    except Exception as e:
+        logger.error(f"Get chat files error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get chat files")
+
+
+@router.get("/files/{file_id}", response_model=UploadedFile)
+async def get_file(
+    file_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific file by ID"""
+    try:
+        file_service = FileService(db)
+        file = file_service.get_file_by_id(current_user.id, file_id)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        return file
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get file error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get file")
+
+
+@router.delete("/files/{file_id}")
+async def delete_file(
+    file_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a file"""
+    try:
+        file_service = FileService(db)
+        if not file_service.delete_file(current_user.id, file_id):
+            raise HTTPException(status_code=404, detail="File not found")
+        return {"message": "File deleted successfully", "file_id": str(file_id)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete file error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete file")

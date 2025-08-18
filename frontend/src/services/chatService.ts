@@ -1,5 +1,27 @@
 import api from './auth'; 
 
+export interface UploadedFile {
+  id: string;
+  original_filename: string;
+  file_type: string;
+  file_size: number;
+  mime_type?: string;
+  processing_status: string;
+  agent_file_id?: string;
+  summary?: string;
+  created_at: string;
+}
+
+export interface FileUploadResponse {
+  file_id: string;
+  original_filename: string;
+  file_type: string;
+  file_size: number;
+  processing_status: string;
+  agent_file_id?: string;
+  message: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -7,6 +29,7 @@ export interface ChatMessage {
   id: string;
   message_type?: string;
   file_url?: string;
+  files?: UploadedFile[];
   // New fields for reasoning integration
   reasoning_steps?: ReasoningStep[];
   is_streaming?: boolean;
@@ -205,15 +228,25 @@ export const chatService = {
       
       console.log('📨 Streaming request:', { url, payload });
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'text/event-stream'
-        },
-        body: JSON.stringify(payload)
-      });
+      // Add timeout controller for fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 300000); // 5 minutes timeout to match backend
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'text/event-stream'
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
 
       console.log('📡 Response status:', response.status, response.statusText);
       console.log('📋 Response headers:', Object.fromEntries(response.headers.entries()));
@@ -273,6 +306,13 @@ export const chatService = {
       }
       
       console.log(`🏆 Stream completed with ${eventCount} events`);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw new Error('Request timed out after 5 minutes');
+        }
+        throw fetchError;
+      }
     } catch (error) {
       console.error('💥 Stream error:', error);
       yield {
@@ -300,14 +340,24 @@ export const chatService = {
         formData.append('chat_id', chatId);
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/chat/upload-and-analyze-stream`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'text/event-stream'
-        },
-        body: formData
-      });
+      // Add timeout controller for file upload request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 300000); // 5 minutes timeout
+
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/chat/upload-and-analyze-stream`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'text/event-stream'
+          },
+          body: formData,
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -343,6 +393,13 @@ export const chatService = {
             }
           }
         }
+      }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw new Error('File upload timed out after 5 minutes');
+        }
+        throw fetchError;
       }
     } catch (error) {
       console.error('File upload stream error:', error);
@@ -536,5 +593,67 @@ export const chatService = {
       console.error('Image analysis error:', error);
       throw error;
     }
+  },
+
+  // File Management Methods
+  async uploadFile(chatId: string, file: File, messageId?: string): Promise<FileUploadResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('chat_id', chatId);
+      if (messageId) {
+        formData.append('message_id', messageId);
+      }
+
+      const response = await api.post('/chat/upload-file', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('File upload error:', error);
+      throw error;
+    }
+  },
+
+  async uploadFiles(chatId: string, files: File[], messageId?: string): Promise<FileUploadResponse[]> {
+    try {
+      const uploadPromises = files.map(file => this.uploadFile(chatId, file, messageId));
+      return await Promise.all(uploadPromises);
+    } catch (error) {
+      console.error('Multiple file upload error:', error);
+      throw error;
+    }
+  },
+
+  async getChatFiles(chatId: string): Promise<UploadedFile[]> {
+    try {
+      const response = await api.get(`/chat/chats/${chatId}/files`);
+      return response.data.files || [];
+    } catch (error) {
+      console.error('Get chat files error:', error);
+      throw error;
+    }
+  },
+
+  async deleteFile(fileId: string): Promise<void> {
+    try {
+      await api.delete(`/chat/files/${fileId}`);
+    } catch (error) {
+      console.error('Delete file error:', error);
+      throw error;
+    }
+  },
+
+  isFileTypeAllowed(filename: string): boolean {
+    const allowedExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.docx', '.xlsx', '.csv'];
+    return allowedExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+  },
+
+  validateFileSize(file: File, maxSizeMB: number = 10): boolean {
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+    return file.size <= maxSizeBytes;
   }
 };

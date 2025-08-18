@@ -12,6 +12,7 @@ from ..schemas.fallback import (
     FallbackSessionCreate, FallbackMessageCreate, FallbackHealthStatus
 )
 from .sms_service import sms_service
+from .telegram_client import telegram_client
 from ..ai.chat_service import ChatService as AIService
 from ..services.chat_service import ChatService
 
@@ -460,6 +461,97 @@ class FallbackService:
             network_quality=network_quality,
             last_network_check=datetime.utcnow()
         )
+    
+    # Telegram Integration Methods
+    
+    async def verify_telegram_registration(
+        self,
+        db: Session,
+        user_id: int,
+        registration_code: str
+    ) -> bool:
+        """Verify Telegram bot registration"""
+        try:
+            success = await telegram_client.verify_registration(registration_code, user_id)
+            if success:
+                logger.info(f"Telegram registration verified for user {user_id}")
+                # Update user fallback method to telegram if they want
+                user = db.query(User).filter(User.id == user_id).first()
+                if user and hasattr(user, 'fallback_method'):
+                    user.fallback_method = "telegram"
+                    db.commit()
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error verifying Telegram registration: {e}")
+            return False
+    
+    async def activate_telegram_fallback(
+        self,
+        db: Session,
+        user_id: int,
+        trigger: str = "manual"
+    ) -> bool:
+        """Activate Telegram fallback for a user"""
+        try:
+            success = await telegram_client.activate_fallback(user_id, trigger)
+            if success:
+                # Update user status
+                user = db.query(User).filter(User.id == user_id).first()
+                if user:
+                    user.fallback_active = True
+                    if hasattr(user, 'fallback_method'):
+                        user.fallback_method = "telegram"
+                    db.commit()
+                
+                logger.info(f"Telegram fallback activated for user {user_id}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error activating Telegram fallback: {e}")
+            return False
+    
+    async def deactivate_telegram_fallback(
+        self,
+        db: Session,
+        user_id: int
+    ) -> bool:
+        """Deactivate Telegram fallback for a user"""
+        try:
+            success = await telegram_client.deactivate_fallback(user_id)
+            if success:
+                # Update user status
+                user = db.query(User).filter(User.id == user_id).first()
+                if user:
+                    user.fallback_active = False
+                    db.commit()
+                
+                logger.info(f"Telegram fallback deactivated for user {user_id}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error deactivating Telegram fallback: {e}")
+            return False
+    
+    async def send_telegram_message(
+        self,
+        user_id: int,
+        message: str
+    ) -> bool:
+        """Send a message to user via Telegram"""
+        try:
+            return await telegram_client.send_message(user_id, message)
+        except Exception as e:
+            logger.error(f"Error sending Telegram message: {e}")
+            return False
+    
+    async def get_telegram_user_info(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get Telegram user information"""
+        try:
+            return await telegram_client.get_user_info(user_id)
+        except Exception as e:
+            logger.error(f"Error getting Telegram user info: {e}")
+            return None
 
 
 # Global instance

@@ -97,7 +97,7 @@ export default function DashboardPage() {
     onError: (error) => {
       console.error('Streaming error:', error);
       setMessages(prev => [...prev, {
-        id: Date.now().toString(),
+        id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         role: 'assistant',
         content: `Sorry, I encountered an error: ${error}`,
         timestamp: new Date()
@@ -254,7 +254,22 @@ export default function DashboardPage() {
   }
 
   const handleFileUpload = (files: File[]) => {
-    setSelectedFiles(prevFiles => [...prevFiles, ...files]);
+    // Validate files before adding
+    const validFiles = files.filter(file => {
+      if (!chatService.isFileTypeAllowed(file.name)) {
+        alert(`File "${file.name}" has an invalid type. Allowed types: .png, .jpg, .jpeg, .gif, .pdf, .docx, .xlsx, .csv`);
+        return false;
+      }
+      if (!chatService.validateFileSize(file)) {
+        alert(`File "${file.name}" is too large. Maximum size is 10MB.`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length > 0) {
+      setSelectedFiles(prevFiles => [...prevFiles, ...validFiles]);
+    }
   }
 
   const handleFileRemove = (index: number) => {
@@ -323,19 +338,72 @@ export default function DashboardPage() {
     if ((!message.trim() && selectedFiles.length === 0) || streaming.isStreaming) return;
 
     const messageText = message.trim();
+    const filesToUpload = [...selectedFiles]; // Copy files before clearing
     console.log('📤 Sending message with chatId:', currentChatId);
+    
+    // Clear input immediately for better UX
     setMessage('');
+    setSelectedFiles([]);
     setShowSuggestions(false);
 
     try {
-      if (selectedFiles.length > 0) {
-        // Handle file upload with streaming
-        const file = selectedFiles[0]; // Use first file for now
-        const promptText = messageText || `Analyze this file: ${file.name}`;
+      if (filesToUpload.length > 0) {
+        // Validate files before uploading
+        const invalidFiles = filesToUpload.filter(file => !chatService.isFileTypeAllowed(file.name));
+        if (invalidFiles.length > 0) {
+          alert(`Invalid file types: ${invalidFiles.map(f => f.name).join(', ')}. Allowed types: .png, .jpg, .jpeg, .gif, .pdf, .docx, .xlsx, .csv`);
+          setSelectedFiles(filesToUpload); // Restore files if validation fails
+          return;
+        }
+
+        const oversizedFiles = filesToUpload.filter(file => !chatService.validateFileSize(file));
+        if (oversizedFiles.length > 0) {
+          alert(`Files too large: ${oversizedFiles.map(f => f.name).join(', ')}. Maximum size is 10MB per file.`);
+          setSelectedFiles(filesToUpload); // Restore files if validation fails
+          return;
+        }
+
+        // Create and show user message with files IMMEDIATELY
+        const userMessageWithFiles: ChatMessage = {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: messageText || `Analyze these files: ${filesToUpload.map(f => f.name).join(', ')}`,
+          timestamp: new Date(),
+          files: filesToUpload.map(file => ({
+            id: `temp-${Date.now()}-${Math.random()}`, // Temporary ID
+            original_filename: file.name,
+            file_type: file.name.split('.').pop()?.toLowerCase() || 'unknown',
+            file_size: file.size,
+            processing_status: 'uploading',
+            agent_file_id: undefined,
+            created_at: new Date().toISOString(),
+            user_id: 0, // Will be filled by backend
+            chat_id: currentChatId || '',
+            message_id: undefined,
+            updated_at: new Date().toISOString(),
+            is_deleted: false
+          }))
+        };
         
-        await streaming.uploadFileWithStreaming(file, promptText, currentChatId || undefined);
-        setSelectedFiles([]); // Clear files after sending
+        // Add user message to UI immediately
+        setMessages(prev => [...prev, userMessageWithFiles]);
+
+        // Handle multiple file upload with streaming
+        const promptText = messageText || `Analyze these files: ${filesToUpload.map(f => f.name).join(', ')}`;
+        
+        await streaming.uploadFileWithStreaming(filesToUpload, promptText, currentChatId || undefined, true);
       } else {
+        // Create and show user text message IMMEDIATELY
+        const userTextMessage: ChatMessage = {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: messageText,
+          timestamp: new Date()
+        };
+        
+        // Add user message to UI immediately
+        setMessages(prev => [...prev, userTextMessage]);
+        
         // Handle text message with streaming
         await streaming.sendMessageWithStreaming(
           messageText, 

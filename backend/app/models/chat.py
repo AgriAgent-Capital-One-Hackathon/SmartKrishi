@@ -44,3 +44,4 @@ class ChatMessage(Base):
     chat = relationship("Chat", back_populates="messages")
     user = relationship("User")
     reasoning_steps = relationship("ReasoningStep", back_populates="message", cascade="all, delete-orphan", order_by="ReasoningStep.step_order")
+    files = relationship("UploadedFile", back_populates="message", cascade="all, delete-orphan")

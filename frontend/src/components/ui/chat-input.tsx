@@ -197,7 +197,7 @@ export default function ChatInput({
               type="file"
               className="hidden"
               onChange={handleFileSelect}
-              accept="image/*,.pdf,.doc,.docx,.txt"
+              accept="image/*,.pdf,.docx,.xlsx,.csv"
               disabled={disabled}
               multiple
             />

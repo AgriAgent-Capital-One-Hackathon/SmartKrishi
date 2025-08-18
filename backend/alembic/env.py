@@ -15,6 +15,7 @@ from app.models.user import User
 from app.models.chat import Chat, ChatMessage  # Import chat models
 from app.models.fallback import FallbackSession, FallbackMessage  # Import fallback models
 from app.models.reasoning import ReasoningStep, AgentApiConfig  # Import reasoning models
+from app.models.file import UploadedFile  # Import file model
 from app.db.database import Base  # Import Base for metadata
 
 # this is the Alembic Config object, which provides

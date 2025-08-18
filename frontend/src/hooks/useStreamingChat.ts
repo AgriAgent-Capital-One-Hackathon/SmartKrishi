@@ -104,9 +104,10 @@ export const useStreamingChat = ({
   }, [onMessageUpdate, onNewMessage, onError, onChatCreated]);
 
   const uploadFileWithStreaming = useCallback(async (
-    file: File,
+    files: File[] | File,
     message: string,
-    chatId?: string
+    chatId?: string,
+    skipUserMessage = false // New parameter to prevent duplicate user messages
   ) => {
     // Abort any ongoing stream
     if (abortController.current) {
@@ -122,7 +123,45 @@ export const useStreamingChat = ({
     }));
 
     try {
-      const streamGenerator = chatService.uploadFileAndAnalyzeStream(file, message, chatId);
+      const fileArray = Array.isArray(files) ? files : [files];
+      
+      if (fileArray.length === 0) {
+        return sendMessageWithStreaming(message, chatId);
+      }
+
+      // For multiple files or new file upload flow
+      if (fileArray.length > 1 || !chatService.uploadFileAndAnalyzeStream) {
+        // Upload files first
+        const uploadResults = await chatService.uploadFiles(chatId || '', fileArray);
+        
+        // Create user message with files
+        const userMessage: ChatMessage = {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: message,
+          timestamp: new Date(),
+          files: uploadResults.map(result => ({
+            id: result.file_id,
+            original_filename: result.original_filename,
+            file_type: result.file_type,
+            file_size: result.file_size,
+            processing_status: result.processing_status,
+            agent_file_id: result.agent_file_id,
+            created_at: new Date().toISOString()
+          }))
+        };
+        
+        // Only add user message if not already added
+        if (!skipUserMessage) {
+          onNewMessage?.(userMessage);
+        }
+
+        // Then stream the response
+        return sendMessageWithStreaming(message, chatId);
+      }
+
+      // Legacy single file streaming (if available)
+      const streamGenerator = chatService.uploadFileAndAnalyzeStream(fileArray[0], message, chatId);
 
       for await (const event of streamGenerator) {
         if (abortController.current?.signal.aborted) {
@@ -149,7 +188,7 @@ export const useStreamingChat = ({
 
       onError?.(errorMessage);
     }
-  }, [onMessageUpdate, onNewMessage, onError, onChatCreated]);
+  }, [sendMessageWithStreaming, onNewMessage, onError]);
 
   // Helper function to update status from log stage
   const updateStatusFromLogStage = useCallback((stage: string) => {
@@ -329,14 +368,14 @@ export const useStreamingChat = ({
           });
           break;
           
-        case 'grounding_supports':
-          addReasoningStep(messageId, currentMessage, {
-            step_type: 'grounding_supports',
-            content: 'Citations linked',
-            supports: event.supports,
-            stage: event.stage
-          });
-          break;
+        // case 'grounding_supports':
+        //   addReasoningStep(messageId, currentMessage, {
+        //     step_type: 'grounding_supports',
+        //     content: 'Citations linked',
+        //     supports: event.supports,
+        //     stage: event.stage
+        //   });
+        //   break;
 
           break;
 
