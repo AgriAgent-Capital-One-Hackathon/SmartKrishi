@@ -48,6 +48,10 @@ const getEventIcon = (eventType: string) => {
     'grounding_web_search_queries': <Globe className="w-3 h-3 text-blue-400" />,
     'grounding_chunks': <FileText className="w-3 h-3 text-teal-500" />,
     'grounding_supports': <CheckCircle className="w-3 h-3 text-green-400" />,
+    'web_search': <Search className="w-3 h-3 text-blue-500" />,
+    'search': <Search className="w-3 h-3 text-blue-500" />,
+    'code': <Code className="w-3 h-3 text-orange-500" />,
+    'execution': <Code className="w-3 h-3 text-orange-500" />,
     'error': <AlertCircle className="w-3 h-3 text-red-600" />,
     'end': <CheckCircle className="w-3 h-3 text-green-600" />
   };
@@ -120,7 +124,22 @@ const formatEventContent = (event: ReasoningStep): string => {
       }
       return `**Sources:** No sources available`;
     case 'grounding_supports':
-      return `**Citations:** Supporting evidence added`;
+      if (event.supports && Array.isArray(event.supports)) {
+        const supports = event.supports.map((support: any, index: number) => 
+          `${index + 1}. ${support.title || support.url || support}`
+        ).join('\n');
+        return `**Citations:**\n${supports}`;
+      }
+      return `**Citations:** Supporting evidence provided`;
+    case 'web_search':
+    case 'search':
+      return `**Web Search:** "${event.query || event.content}"`;
+    case 'code':
+    case 'execution':
+      if (event.code) {
+        return `**Code Execution:**\n\`\`\`${event.language || 'python'}\n${event.code}\n\`\`\``;
+      }
+      return `**Code Execution:** ${event.content || 'Running code...'}`;
     case 'error':
       return `**Error:** ${event.message || event.content}`;
     case 'end':
@@ -184,21 +203,23 @@ const ReasoningTimeline: React.FC<{
   const sortedSteps = [...steps].sort((a, b) => a.step_order - b.step_order);
 
   return (
-    <div className="mb-4">
+    <div className="mb-4 w-full">
       <Collapsible open={isExpanded} onOpenChange={onToggle}>
         <CollapsibleTrigger 
-          className={`flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-800 transition-colors cursor-pointer p-2 rounded hover:bg-gray-50 ${
-            isThinking ? 'animate-pulse' : ''
-          }`}
+          className="flex items-center space-x-2 text-sm cursor-pointer p-2 w-full"
         >
           <Brain className={`w-4 h-4 ${isThinking ? 'text-green-500 animate-pulse' : 'text-gray-600'}`} />
-          <span className={isThinking ? 'bg-gradient-to-r from-gray-600 via-green-500 to-gray-600 bg-clip-text text-transparent bg-200% animate-shimmer' : ''}>
-            Show reasoning ({steps.length} steps)
+          <span className={`transition-colors ${
+            isThinking 
+              ? 'text-gray-700 bg-gradient-to-r from-gray-600 via-green-500 to-gray-600 bg-clip-text text-transparent bg-200% animate-shimmer' 
+              : 'text-gray-600 hover:text-gray-800'
+          }`}>
+            {isThinking ? 'Thinking' : `Show reasoning (${steps.length} steps)`}
           </span>
-          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          {!isThinking && (isExpanded ? <ChevronDown className="w-4 h-4 ml-auto" /> : <ChevronRight className="w-4 h-4 ml-auto" />)}
         </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <div className="relative pl-8 pb-4">
+        <CollapsibleContent className="mt-2 w-full">
+          <div className="relative pl-8 pb-4 w-full">
             {/* Animated vertical timeline line */}
             <div className={`absolute left-4 top-0 bottom-0 w-0.5 ${
               isThinking 
@@ -207,7 +228,7 @@ const ReasoningTimeline: React.FC<{
             }`}></div>
             
             {sortedSteps.map((step, index) => (
-              <div key={step.id || index} className="relative mb-4 last:mb-0">
+              <div key={step.id || index} className="relative mb-4 last:mb-0 w-full">
                 {/* Timeline dot with glow effect */}
                 <div className={`absolute -left-7 top-2 w-6 h-6 bg-white border-2 rounded-full flex items-center justify-center transition-all duration-300 ${
                   isThinking && index === sortedSteps.length - 1
@@ -217,13 +238,13 @@ const ReasoningTimeline: React.FC<{
                   {getEventIcon(step.step_type)}
                 </div>
                 
-                {/* Step content with animation */}
-                <div className={`bg-gray-50 p-3 rounded-lg ml-1 transition-all duration-300 ${
+                {/* Step content with better styling */}
+                <div className={`bg-gradient-to-br from-green-50/50 via-white to-emerald-50/30 border border-green-100/50 p-3 rounded-lg ml-1 transition-all duration-300 w-full ${
                   isThinking && index === sortedSteps.length - 1
-                    ? 'ring-2 ring-green-200 shadow-md' 
-                    : ''
+                    ? 'ring-2 ring-green-200 shadow-md border-green-200' 
+                    : 'hover:shadow-sm hover:border-green-200/70'
                 }`}>
-                  <div className="prose prose-sm max-w-none">
+                  <div className="prose prose-sm max-w-none text-gray-700">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {formatEventContent(step)}
                     </ReactMarkdown>
@@ -393,11 +414,11 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
   const hasReasoning = message.reasoning_steps && message.reasoning_steps.length > 0;
 
   if (isUser) {
-    // User message - green bubble, right aligned, smaller size
+    // User message - green bubble, right aligned, consistent size
     return (
       <div className="flex justify-end mb-6 group">
-        <div className="max-w-sm">
-          <div className="bg-green-500 text-white px-3 py-2 rounded-2xl rounded-br-md text-sm">
+        <div className="max-w-lg">
+          <div className="bg-green-500 text-white px-4 py-3 rounded-2xl rounded-br-md text-sm">
             <div className="prose prose-sm max-w-none text-white prose-invert">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {message.content}
@@ -431,7 +452,7 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
 
         {/* Message Content */}
         <div>
-          {message.is_thinking ? (
+          {message.is_thinking && !hasReasoning ? (
             <ThinkingAnimation />
           ) : message.is_streaming ? (
             <StreamingText content={message.content} />

@@ -21,7 +21,7 @@ class Chat(Base):
     
     # Relationship
     user = relationship("User", back_populates="chats")
-    messages = relationship("ChatMessage", back_populates="chat", cascade="all, delete-orphan")
+    messages = relationship("ChatMessage", back_populates="chat", cascade="all, delete-orphan", order_by="ChatMessage.created_at")
 
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
@@ -43,4 +43,4 @@ class ChatMessage(Base):
     # Relationships
     chat = relationship("Chat", back_populates="messages")
     user = relationship("User")
-    reasoning_steps = relationship("ReasoningStep", back_populates="message", cascade="all, delete-orphan")
+    reasoning_steps = relationship("ReasoningStep", back_populates="message", cascade="all, delete-orphan", order_by="ReasoningStep.step_order")

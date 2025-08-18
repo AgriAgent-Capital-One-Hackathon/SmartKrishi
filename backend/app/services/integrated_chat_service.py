@@ -65,14 +65,26 @@ class IntegratedChatService:
                 }
                 return
             
-            # Create user message in database
-            user_message_data = ChatMessageCreate(
-                role="user",
-                content=message,
-                message_type="text"
-            )
-            user_message = ChatService.add_message(db, chat_id, user_id, user_message_data)
-            logger.info(f"Created user message: {user_message.id}")
+            # Check if user message already exists to avoid duplicates
+            existing_user_message = db.query(ChatMessage).filter(
+                ChatMessage.chat_id == chat_id,
+                ChatMessage.role == "user",
+                ChatMessage.content == message,
+                ChatMessage.user_id == user_id
+            ).order_by(ChatMessage.created_at.desc()).first()
+            
+            if existing_user_message:
+                logger.info(f"Using existing user message: {existing_user_message.id}")
+                user_message = existing_user_message
+            else:
+                # Create user message in database
+                user_message_data = ChatMessageCreate(
+                    role="user",
+                    content=message,
+                    message_type="text"
+                )
+                user_message = ChatService.add_message(db, chat_id, user_id, user_message_data)
+                logger.info(f"Created new user message: {user_message.id}")
             
             # Create assistant message placeholder
             assistant_message_data = ChatMessageCreate(

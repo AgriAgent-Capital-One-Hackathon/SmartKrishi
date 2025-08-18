@@ -64,7 +64,14 @@ export default function DashboardPage() {
   // New streaming hook
   const streaming = useStreamingChat({
     onNewMessage: (msg) => {
-      setMessages(prev => [...prev, msg]);
+      setMessages(prev => {
+        // Check if message already exists to prevent duplicates
+        const existingIndex = prev.findIndex(m => m.id === msg.id);
+        if (existingIndex >= 0) {
+          return prev; // Message already exists, don't add duplicate
+        }
+        return [...prev, msg];
+      });
     },
     onMessageUpdate: (msg) => {
       setMessages(prev => {
@@ -74,6 +81,7 @@ export default function DashboardPage() {
           updated[existingIndex] = msg;
           return updated;
         }
+        // If message doesn't exist, add it (could be from streaming)
         return [...prev, msg];
       });
     },
@@ -145,6 +153,8 @@ export default function DashboardPage() {
   }, [messages]);
 
   const handleNewChat = () => {
+    // Stop any ongoing streaming
+    streaming.stopStreaming();
     setMessages([]);
     setMessage('');
     setSelectedFiles([]);
@@ -155,13 +165,46 @@ export default function DashboardPage() {
 
   const handleChatSelect = async (chatId: string) => {
     try {
+      // Stop any ongoing streaming
+      streaming.stopStreaming();
+      
       const chat = await chatService.getChat(chatId);
-      const chatMessages: ChatMessage[] = chat.messages.map(msg => ({
-        id: msg.id,
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-        timestamp: new Date(msg.created_at)
-      }));
+      // Convert backend message format to frontend format with reasoning steps
+      const chatMessages: ChatMessage[] = chat.messages
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // Ensure proper ordering
+        .map(msg => ({
+          id: msg.id,
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: new Date(msg.created_at),
+          // Include reasoning steps if they exist and filter out non-reasoning content
+          reasoning_steps: msg.reasoning_steps
+            ?.filter((step: any) => 
+              // Only include actual reasoning steps, not response chunks or final responses
+              step.step_type && 
+              step.step_type !== 'response_chunk' && 
+              step.step_type !== 'response' && 
+              step.step_type !== 'end' &&
+              step.step_type !== 'log' &&  // Filter out log events
+              step.content && 
+              step.content.trim() !== ''
+            )
+            ?.map((step: any) => ({
+              id: step.id,
+              step_type: step.step_type,
+              step_order: step.step_order,
+              stage: step.stage,
+              content: step.content,
+              message: step.content,
+              tool_name: step.tool_name,
+              tool: step.tool_name,
+              tool_args: step.tool_args,
+              tool_result: step.tool_result,
+              step_metadata: step.step_metadata,
+              created_at: step.created_at
+            })) || []
+        }));
+      
       setMessages(chatMessages);
       setCurrentChatId(chatId);
       setShowSuggestions(chatMessages.length === 0);

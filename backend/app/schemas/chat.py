@@ -1,7 +1,27 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime
 from uuid import UUID
+
+class ReasoningStepBase(BaseModel):
+    step_type: str
+    step_order: int
+    stage: Optional[str] = None
+    content: Optional[str] = None
+    tool_name: Optional[str] = None
+    tool_args: Optional[str] = None
+    tool_result: Optional[Any] = None
+    step_metadata: Optional[Any] = None
+
+class ReasoningStep(ReasoningStepBase):
+    id: UUID
+    message_id: UUID
+    chat_id: UUID
+    user_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 class ChatMessageBase(BaseModel):
     role: str
@@ -22,6 +42,7 @@ class ChatMessage(ChatMessageBase):
     user_id: int
     created_at: datetime
     edited_at: Optional[datetime] = None
+    reasoning_steps: List[ReasoningStep] = []
     
     class Config:
         from_attributes = True

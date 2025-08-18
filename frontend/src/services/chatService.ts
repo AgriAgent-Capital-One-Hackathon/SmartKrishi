@@ -46,6 +46,18 @@ export interface Chat {
     message_type: string;
     file_url?: string;
     created_at: string;
+    reasoning_steps?: Array<{
+      id: string;
+      step_type: string;
+      step_order: number;
+      stage?: string;
+      content?: string;
+      tool_name?: string;
+      tool_args?: string;
+      tool_result?: any;
+      step_metadata?: any;
+      created_at: string;
+    }>;
   }>;
 }
 

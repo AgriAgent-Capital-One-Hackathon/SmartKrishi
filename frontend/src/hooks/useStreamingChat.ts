@@ -166,6 +166,10 @@ export const useStreamingChat = ({
       };
 
       switch (event.type) {
+        case 'log':
+          // Skip log events completely
+          break;
+          
         case 'plan':
         case 'thinking':
         case 'tool_call':
@@ -175,14 +179,25 @@ export const useStreamingChat = ({
         case 'grounding_web_search_queries':
         case 'grounding_chunks':
         case 'grounding_supports':
-          // Skip log events and add reasoning step for all other event types
-          // Check for duplicate events to prevent double entries
+        case 'web_search':
+        case 'search':
+        case 'code':
+        case 'execution':
+          // Add reasoning step for other event types
+          // Enhanced duplicate detection
           const eventContent = event.content || event.message || '';
-          const isDuplicate = currentMessage.reasoningSteps.some(step => 
-            step.step_type === event.type && 
-            step.content === eventContent &&
-            JSON.stringify(step.step_metadata) === JSON.stringify(event)
-          );
+          
+          // Skip empty content
+          if (eventContent.trim() === '') {
+            break;
+          }
+          
+          const eventKey = `${event.type}-${eventContent}-${event.stage || ''}-${event.tool || ''}-${event.query || ''}-${event.step_order || currentMessage.reasoningSteps.length}`;
+          
+          const isDuplicate = currentMessage.reasoningSteps.some(step => {
+            const stepKey = `${step.step_type}-${step.content}-${step.stage || ''}-${step.tool || ''}-${step.query || ''}-${step.step_order}`;
+            return stepKey === eventKey || (step.content === eventContent && step.step_type === event.type);
+          });
           
           if (!isDuplicate) {
             const reasoningStep: ReasoningStep = {
@@ -222,7 +237,7 @@ export const useStreamingChat = ({
               role: 'assistant',
               content: '',
               timestamp: new Date(),
-              reasoning_steps: [...currentMessage.reasoningSteps], // Create new array for updates
+              reasoning_steps: [...currentMessage.reasoningSteps],
               is_thinking: true,
               is_streaming: false
             };
@@ -318,31 +333,45 @@ export const useStreamingChat = ({
           break;
 
         default:
-          // Handle any other event types as reasoning steps
-          if (event.type && event.type !== 'end') {
-            const genericStep: ReasoningStep = {
-              id: `${Date.now()}-${Math.random()}`,
-              step_type: event.type,
-              step_order: currentMessage.reasoningSteps.length,
-              content: event.content || event.message || `${event.type} event`,
-              step_metadata: event,
-              created_at: new Date().toISOString()
-            };
+          // Handle any other event types as reasoning steps, but filter out response-related events
+          if (event.type && 
+              event.type !== 'end' && 
+              event.type !== 'response' && 
+              event.type !== 'response_chunk' &&
+              event.type !== 'log') {
+            const eventContent = event.content || event.message || '';
+            if (eventContent.trim() !== '') {
+              const genericStep: ReasoningStep = {
+                id: `${Date.now()}-${Math.random()}`,
+                step_type: event.type,
+                step_order: currentMessage.reasoningSteps.length,
+                content: eventContent,
+                step_metadata: event,
+                created_at: new Date().toISOString()
+              };
 
-            currentMessage.reasoningSteps.push(genericStep);
-            currentMessage.isThinking = true;
-            
-            const genericMessage: ChatMessage = {
-              id: messageId,
-              role: 'assistant',
-              content: currentMessage.accumulatedContent,
-              timestamp: new Date(),
-              reasoning_steps: [...currentMessage.reasoningSteps],
-              is_thinking: true,
-              is_streaming: false
-            };
-            
-            onMessageUpdate?.(genericMessage);
+              // Check for duplicates before adding
+              const isDuplicate = currentMessage.reasoningSteps.some(step => 
+                step.content === eventContent && step.step_type === event.type
+              );
+
+              if (!isDuplicate) {
+                currentMessage.reasoningSteps.push(genericStep);
+                currentMessage.isThinking = true;
+                
+                const genericMessage: ChatMessage = {
+                  id: messageId,
+                  role: 'assistant',
+                  content: currentMessage.accumulatedContent,
+                  timestamp: new Date(),
+                  reasoning_steps: [...currentMessage.reasoningSteps],
+                  is_thinking: true,
+                  is_streaming: false
+                };
+                
+                onMessageUpdate?.(genericMessage);
+              }
+            }
           }
           break;
       }
